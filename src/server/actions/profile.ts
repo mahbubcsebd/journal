@@ -2,10 +2,13 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { deleteObjects } from "@/lib/storage";
+import { disconnectMetaApi } from "@/server/services/metaapi";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { user } from "@/db/schema";
+import { trade, tradeImage, tradingAccount, user } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { sendWeeklyReportIfDue } from "@/server/services/notifications";
 import { rebuildAllDailyStats } from "@/server/services/trades";
@@ -80,4 +83,27 @@ export async function sendWeeklyReportNow(): Promise<{ ok: boolean; message: str
     console.error(e);
     return { ok: false, message: "Couldn't send the email. Check the SMTP settings." };
   }
+}
+
+/** Permanently delete the user and everything they own. Requires typing the account email. */
+export async function deleteMyAccount(confirmEmail: string): Promise<{ error?: string }> {
+  const current = await getCurrentUser();
+  if (!current) redirect("/login");
+  if (confirmEmail.trim().toLowerCase() !== current.email.toLowerCase()) return { error: "The email doesn't match." };
+
+  // Stop paid MetaApi terminals and remove stored screenshots before the rows disappear.
+  const accounts = await db.select().from(tradingAccount).where(eq(tradingAccount.userId, current.id));
+  for (const a of accounts) if (a.metaapiAccountId) await disconnectMetaApi(a).catch(() => {});
+  const images = await db
+    .select({ url: tradeImage.url })
+    .from(tradeImage)
+    .innerJoin(trade, eq(trade.id, tradeImage.tradeId))
+    .where(eq(trade.userId, current.id));
+  await deleteObjects(images.map((i) => i.url)).catch((e) => console.error("screenshot cleanup failed", e));
+
+  // Cascades to sessions, accounts, trades, journal, notes, goals, keys, logs…
+  await db.delete(user).where(eq(user.id, current.id));
+  const jar = await cookies();
+  for (const c of jar.getAll()) if (c.name.includes("better-auth")) jar.delete(c.name);
+  redirect("/?deleted=1");
 }

@@ -112,7 +112,7 @@ export function Notebook({ notes, selectedId, timezone }: { notes: Note[]; selec
                   )}
                 >
                   <span className="flex items-center gap-1.5 text-sm font-medium">
-                    {n.pinned && <Pin className="size-3 shrink-0 text-brand" />}
+                    {n.pinned && <Pin className="size-3 shrink-0 text-brand-ink" />}
                     <span className="truncate">{n.title}</span>
                   </span>
                   <span className="line-clamp-2 text-xs text-muted-foreground">{n.preview || "No content"}</span>

@@ -83,7 +83,7 @@ export function InsightsView({
             </div>
             {!configured ? (
               <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm">
-                <KeyRound className="mt-0.5 size-4 shrink-0 text-warning" />
+                <KeyRound className="mt-0.5 size-4 shrink-0 text-warning-ink" />
                 <div className="grid gap-1">
                   <p className="font-medium">Add a Gemini API key to turn this on</p>
                   <p className="text-muted-foreground">

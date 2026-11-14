@@ -47,7 +47,7 @@ function Chip({
           ? {
               background: `color-mix(in oklch, ${color ?? "var(--brand)"} 16%, transparent)`,
               borderColor: `color-mix(in oklch, ${color ?? "var(--brand)"} 45%, transparent)`,
-              color: color ?? "var(--brand)",
+              color: `color-mix(in oklch, ${color ?? "var(--brand)"} 60%, var(--foreground))`,
             }
           : undefined
       }
@@ -178,7 +178,7 @@ export function TradeJournal({
                 <Star
                   className={cn(
                     "size-6 transition-colors",
-                    v.rating && n <= v.rating ? "fill-warning text-warning" : "text-muted-foreground/40",
+                    v.rating && n <= v.rating ? "fill-warning text-warning-ink" : "text-muted-foreground/40",
                   )}
                 />
               </motion.button>

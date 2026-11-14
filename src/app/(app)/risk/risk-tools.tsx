@@ -22,7 +22,7 @@ function Tool({ icon: Icon, title, hint, children, className }: { icon: typeof C
   return (
     <Card className={cn("overflow-hidden", className)}>
       <div className="flex items-center gap-3 border-b px-5 py-4">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-brand-soft text-brand">
+        <span className="flex size-8 items-center justify-center rounded-lg bg-brand-soft text-brand-ink">
           <Icon className="size-4" />
         </span>
         <div>
@@ -212,7 +212,7 @@ function PositionSize({ accounts }: { accounts: Account[] }) {
         </div>
         {missing && <p className="text-xs text-muted-foreground">{missing}</p>}
         {result && result.lots === 0 && <p className="text-xs text-loss">Risk is too small for even 0.01 lots with this stop. Widen the risk or tighten the stop.</p>}
-        {mode === "percent" && (num(risk) ?? 0) > 2 && <p className="text-xs text-warning">Risking more than 2% per trade makes long losing streaks very costly — see the tables below.</p>}
+        {mode === "percent" && (num(risk) ?? 0) > 2 && <p className="text-xs text-warning-ink">Risking more than 2% per trade makes long losing streaks very costly — see the tables below.</p>}
       </div>
     </Tool>
   );

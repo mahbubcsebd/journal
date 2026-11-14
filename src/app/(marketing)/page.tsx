@@ -67,7 +67,7 @@ export default function Home() {
           <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
               <StaggerItem key={f.title} className="rounded-2xl border bg-card p-6 shadow-soft transition hover:shadow-pop">
-                <span className="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
                   <f.icon className="size-5" />
                 </span>
                 <h3 className="mt-4 font-semibold tracking-tight">{f.title}</h3>

@@ -29,6 +29,20 @@
       "when": 1794668691083,
       "tag": "0003_open_positions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794673375515,
+      "tag": "0004_rate_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794673376122,
+      "tag": "0005_enable_rls",
+      "breakpoints": true
     }
   ]
 }

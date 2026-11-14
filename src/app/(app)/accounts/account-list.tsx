@@ -67,7 +67,7 @@ export function AccountList({
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center gap-4 rounded-2xl border border-dashed bg-card/60 px-6 py-16 text-center"
       >
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink">
           <Wallet className="size-6" />
         </span>
         <div className="grid max-w-md gap-1.5">
@@ -110,7 +110,7 @@ export function AccountList({
                     </div>
                   </div>
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground">
+                    <DropdownMenuTrigger aria-label={`Options for ${a.nickname}`} className="rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground">
                       <MoreHorizontal className="size-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -179,14 +179,14 @@ export function AccountList({
                       {a.equity != null ? formatMoney(a.equity, a.currency) : "—"}
                     </dd>
                   </div>
-                  <div className="col-span-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                </dl>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <Server className="size-3.5" /> {a.server}
                     <span className="mx-1">·</span>
                     <PlugZap className="size-3.5" />
                     <span suppressHydrationWarning>{a.lastSyncAt ? `Synced ${ago(a.lastSyncAt)}` : "Not synced yet"}</span>
                     {(a.openPositions?.length ?? 0) > 0 && <span>· {a.openPositions!.length} open</span>}
-                  </div>
-                </dl>
+                </div>
                 <div className="mt-4 flex gap-2">
                   {a.syncMethod === "METAAPI" ? (
                     <Button

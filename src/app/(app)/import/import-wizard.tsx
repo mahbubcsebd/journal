@@ -142,7 +142,7 @@ export function ImportWizard({ accounts }: { accounts: Account[] }) {
                 />
                 <motion.span
                   animate={{ y: dragging ? -4 : 0 }}
-                  className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand"
+                  className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink"
                 >
                   {pending ? <Loader2 className="size-6 animate-spin" /> : <UploadCloud className="size-6" />}
                 </motion.span>
@@ -262,7 +262,7 @@ export function ImportWizard({ accounts }: { accounts: Account[] }) {
                         ))}
                       </div>
                       {preview.warnings.map((w) => (
-                        <p key={w} className="flex items-center gap-2 text-[13px] text-warning">
+                        <p key={w} className="flex items-center gap-2 text-[13px] text-warning-ink">
                           <AlertTriangle className="size-3.5" /> {w}
                         </p>
                       ))}
@@ -320,7 +320,7 @@ export function ImportWizard({ accounts }: { accounts: Account[] }) {
           <a
             href="/templates/journal-trades-template.csv"
             download
-            className="mt-1 inline-flex items-center gap-1.5 font-medium text-brand hover:underline"
+            className="mt-1 inline-flex items-center gap-1.5 font-medium text-brand-ink hover:underline"
           >
             <Download className="size-3.5" /> CSV template
           </a>

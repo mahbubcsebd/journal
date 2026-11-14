@@ -3,7 +3,9 @@ import { parseTradeFilters } from "@/lib/trade-filters";
 import { listTrades } from "@/server/queries/trades";
 
 const esc = (v: unknown) => {
-  const s = v == null ? "" : v instanceof Date ? v.toISOString() : String(v);
+  let s = v == null ? "" : v instanceof Date ? v.toISOString() : String(v);
+  // Stop spreadsheet apps from running text (e.g. an account nickname) as a formula.
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 

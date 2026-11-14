@@ -63,7 +63,7 @@ export function MonthView({ anchor, today, weekStartsOn, byDay, currency, journa
                   style={p && !outside ? pnlFill(p.net, maxAbs) : p ? pnlFill(p.net, maxAbs, 0.5) : undefined}
                 >
                   <span className="flex items-center justify-between">
-                    <span className={cn("text-[11px] font-medium tabular sm:text-xs", day === today ? "text-brand" : "text-muted-foreground")}>
+                    <span className={cn("text-[11px] font-medium tabular sm:text-xs", day === today ? "text-brand-ink" : p && !outside ? "text-foreground/75" : "text-muted-foreground")}>
                       {Number(day.slice(8))}
                     </span>
                     {day in journal && (
@@ -80,7 +80,7 @@ export function MonthView({ anchor, today, weekStartsOn, byDay, currency, journa
                       <span className={cn("font-mono text-[10px] font-semibold tracking-tight tabular sm:hidden", pnlText(p.net))}>
                         {formatTiny(p.net)}
                       </span>
-                      <span className="hidden text-[11px] text-muted-foreground sm:block">
+                      <span className="hidden text-[11px] text-foreground/70 sm:block">
                         {p.trades} {p.trades === 1 ? "trade" : "trades"}
                         {decided > 0 && <span className="hidden md:inline"> · {formatPercent(p.wins / decided, 0)}</span>}
                       </span>

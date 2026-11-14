@@ -55,7 +55,7 @@ export function GoalAlertBanner({ alerts }: { alerts: Alert[] }) {
                 a.tone === "success" && "border-profit/30 bg-profit-soft",
               )}
             >
-              <Icon className={cn("size-4 shrink-0", a.tone === "danger" ? "text-loss" : a.tone === "warning" ? "text-warning" : "text-profit")} />
+              <Icon className={cn("size-4 shrink-0", a.tone === "danger" ? "text-loss" : a.tone === "warning" ? "text-warning-ink" : "text-profit")} />
               <span className="flex-1">{a.text}</span>
               <Link href="/goals" className="text-xs font-medium whitespace-nowrap underline-offset-4 hover:underline">
                 Goals

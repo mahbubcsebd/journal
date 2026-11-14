@@ -29,7 +29,7 @@ export function OnboardingForm({ email, defaultName }: { email: string; defaultN
     >
       <input type="hidden" name="intent" value="onboarding" />
       <div className="grid gap-1.5">
-        <p className="text-xs font-medium tracking-wide text-brand uppercase">Step 1 of 2</p>
+        <p className="text-xs font-medium tracking-wide text-brand-ink uppercase">Step 1 of 2</p>
         <h1 className="text-xl font-semibold tracking-tight">Let&apos;s set up your journal</h1>
         <p className="text-sm text-muted-foreground">
           Signed in as <span className="text-foreground">{email}</span>

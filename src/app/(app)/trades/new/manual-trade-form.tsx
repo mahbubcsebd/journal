@@ -27,7 +27,7 @@ export function ManualTradeForm({
     return (
       <Card className="p-6 text-sm text-muted-foreground">
         Add a trading account first.{" "}
-        <Link href="/accounts" className="font-medium text-brand hover:underline">
+        <Link href="/accounts" className="font-medium text-brand-ink hover:underline">
           Go to accounts
         </Link>
       </Card>

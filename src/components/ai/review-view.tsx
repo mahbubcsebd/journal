@@ -64,7 +64,7 @@ export function ReviewView({ review }: { review: Review }) {
       {review.patterns.length > 0 && (
         <div className="grid gap-2.5">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <Lightbulb className="size-4 text-warning" /> Patterns
+            <Lightbulb className="size-4 text-warning-ink" /> Patterns
           </p>
           <div className="grid gap-2.5 md:grid-cols-2">
             {review.patterns.map((p, i) => (
@@ -80,12 +80,12 @@ export function ReviewView({ review }: { review: Review }) {
 
       <div className="grid gap-2.5 rounded-2xl border border-brand/30 bg-brand-soft/40 p-5">
         <p className="flex items-center gap-2 text-sm font-semibold">
-          <Target className="size-4 text-brand" /> Your rules for next period
+          <Target className="size-4 text-brand-ink" /> Your rules for next period
         </p>
         <ol className="grid gap-2">
           {review.actions.map((a, i) => (
             <motion.li key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.06 }} className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-brand" />
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-brand-ink" />
               <span className="text-sm">
                 <span className="font-medium">{a.title}.</span> <span className="text-muted-foreground">{a.detail}</span>
               </span>

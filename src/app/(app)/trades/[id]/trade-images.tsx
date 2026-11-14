@@ -70,6 +70,7 @@ export function TradeImages({ tradeId, initial }: { tradeId: string; initial: Im
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif"
           multiple
+          aria-label="Add screenshots"
           className="sr-only"
           onChange={(e) => {
             upload([...(e.target.files ?? [])]);

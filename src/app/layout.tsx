@@ -9,6 +9,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const bengali = Noto_Sans_Bengali({ variable: "--font-bengali", subsets: ["bengali"], preload: false });
 
 export const metadata: Metadata = {
+  // Absolute URLs for Open Graph / Twitter images.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   title: { default: "Journal — Trading journal for Exness MT5", template: "%s · Journal" },
   description:
     "Auto-sync your Exness MT5 trades, see every day in a profit & loss calendar, and get deep analytics and AI insights.",

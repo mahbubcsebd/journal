@@ -193,7 +193,7 @@ export function CalendarShell(props: Props) {
       {!props.hasAccounts && (
         <p className="text-center text-sm text-muted-foreground">
           Add an account and import its history to fill the calendar.{" "}
-          <Link href="/accounts" className="font-medium text-brand hover:underline">
+          <Link href="/accounts" className="font-medium text-brand-ink hover:underline">
             Accounts
           </Link>
         </p>

@@ -1,7 +1,8 @@
 # Journal
 
 Trading journal for Exness MT5 traders — auto-synced trades, P&L calendar, deep analytics and AI insights.
-See [PLAN.md](./PLAN.md) for the full feature plan and progress.
+See [PLAN.md](./PLAN.md) for the full feature plan and progress, and **[DEPLOY.md](./DEPLOY.md)** for the
+step-by-step Supabase + Vercel launch guide.
 
 ## Stack
 
@@ -69,8 +70,17 @@ Two ways, both feeding the same pipeline (deals are de-duplicated against import
 `G` then a letter jumps to a page (`G D` dashboard, `G C` calendar, `G T` trades, `G J` journal …),
 `Shift N` adds a trade and `?` lists every shortcut.
 
-## Deploying to Vercel
+## Deploying
 
-Add the same environment variables in Vercel → Project → Settings → Environment Variables
-(`BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` set to your production URL), then run
-`npm run db:migrate` against the Supabase database once.
+Follow [DEPLOY.md](./DEPLOY.md). In short: create a Supabase project and a private `trade-images`
+bucket, run `npm run db:migrate` once, import the repo in Vercel and add the environment variables.
+
+## Security notes
+
+- Passwordless email OTP (hashed, 5 attempts, 3 sends/minute; rate limits stored in Postgres).
+- Every server action and API route checks the session and ownership; Row Level Security is enabled on
+  all tables so Supabase's public Data API can't read them.
+- Broker access is read-only: the EA never trades and MetaApi uses the investor password, which Journal
+  doesn't store. EA sync keys are stored as SHA-256 hashes and can be revoked.
+- Security headers (frame-ancestors, nosniff, HSTS, referrer and permissions policy), CSV formula
+  escaping, image type sniffing, safe redirect after login, data export and full account deletion.

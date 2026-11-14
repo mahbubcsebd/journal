@@ -24,7 +24,7 @@ function Section({ icon: Icon, title, hint, children, delay = 0 }: { icon: typeo
     <FadeIn delay={delay}>
       <Card className="overflow-hidden">
         <div className="flex items-center gap-3 border-b px-5 py-4">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-brand-soft text-brand">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-brand-soft text-brand-ink">
             <Icon className="size-4" />
           </span>
           <div>

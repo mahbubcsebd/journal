@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, Input, Select } from "@/components/ui/input";
 import { COMMON_TIMEZONES, CURRENCIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { saveNotificationSettings, saveProfile, sendWeeklyReportNow, type ProfileState } from "@/server/actions/profile";
+import { deleteMyAccount, saveNotificationSettings, saveProfile, sendWeeklyReportNow, type ProfileState } from "@/server/actions/profile";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const noop = () => () => {};
 
@@ -75,6 +76,7 @@ export function SettingsForm(props: {
         </CardContent>
       </Card>
       <Notifications weekly={props.emailWeeklyReport} alerts={props.emailGoalAlerts} email={props.email} />
+      <YourData email={props.email} />
       <Card>
         <CardHeader className="flex-col gap-1">
           <CardTitle>Appearance</CardTitle>
@@ -163,6 +165,71 @@ function Notifications({ weekly: w, alerts: a, email }: { weekly: boolean; alert
             {pending && <Loader2 className="animate-spin" />}
             Send last week&apos;s summary now
           </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function YourData({ email }: { email: string }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <Card>
+      <CardHeader className="flex-col gap-1">
+        <CardTitle>Your data</CardTitle>
+        <CardDescription>Download everything you&apos;ve stored, or delete your account for good.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="grid gap-0.5">
+            <span className="text-sm font-medium">Export all data</span>
+            <span className="text-[13px] text-muted-foreground">Accounts, trades, deals, journal, notes, playbook, goals and AI reviews as JSON.</span>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <a href="/api/account/export">Download JSON</a>
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-loss/30 bg-loss-soft/40 p-4">
+          <div className="grid gap-0.5">
+            <span className="text-sm font-medium text-loss">Delete account</span>
+            <span className="text-[13px] text-muted-foreground">Removes every trade, note and setting, stops MetaApi sync and deletes screenshots. This can&apos;t be undone.</span>
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                Delete account
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete your account?</DialogTitle>
+                <DialogDescription>
+                  Everything in Journal will be permanently deleted. Your Exness accounts and MT5 history are not affected. Type <b>{email}</b> to confirm.
+                </DialogDescription>
+              </DialogHeader>
+              <form
+                className="grid gap-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setError(null);
+                  start(async () => {
+                    const r = await deleteMyAccount(typed);
+                    if (r?.error) setError(r.error);
+                  });
+                }}
+              >
+                <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={email} autoComplete="off" aria-label="Type your email to confirm" />
+                {error && <p className="text-xs text-loss">{error}</p>}
+                <Button type="submit" variant="destructive" disabled={pending || typed.trim().toLowerCase() !== email.toLowerCase()}>
+                  {pending && <Loader2 className="animate-spin" />}
+                  Permanently delete
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </CardContent>
     </Card>

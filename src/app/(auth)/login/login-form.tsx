@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { OtpInput } from "@/components/ui/otp-input";
 import { authClient } from "@/lib/auth-client";
+import { safeNext } from "@/lib/safe-next";
 
 const RESEND_SECONDS = 30;
+
 
 export function LoginForm() {
   const router = useRouter();
@@ -66,7 +68,7 @@ export function LoginForm() {
       return;
     }
     const next = params.get("next");
-    router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
+    router.replace(safeNext(next));
     router.refresh();
   }
 

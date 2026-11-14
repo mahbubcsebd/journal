@@ -167,7 +167,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
                     <CardTitle>{formatDay(today, { month: "long", year: "numeric" })}</CardTitle>
                     <CardDescription>This month at a glance</CardDescription>
                   </div>
-                  <Link href="/calendar" className="text-[13px] font-medium text-brand hover:underline">
+                  <Link href="/calendar" className="text-[13px] font-medium text-brand-ink hover:underline">
                     Calendar
                   </Link>
                 </CardHeader>
@@ -199,7 +199,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
               <Card className="h-full">
                 <CardHeader>
                   <CardTitle>Recent trades</CardTitle>
-                  <Link href="/trades" className="text-[13px] font-medium text-brand hover:underline">
+                  <Link href="/trades" className="text-[13px] font-medium text-brand-ink hover:underline">
                     All trades
                   </Link>
                 </CardHeader>
@@ -327,7 +327,7 @@ function GettingStarted({ hasAccount }: { hasAccount: boolean }) {
               <p className="text-sm font-medium">{step.title}</p>
               <p className="text-[13px] text-muted-foreground">{step.body}</p>
             </div>
-            <Link href={step.href} className="mt-auto inline-flex items-center gap-1 text-[13px] font-medium text-brand hover:underline">
+            <Link href={step.href} className="mt-auto inline-flex items-center gap-1 text-[13px] font-medium text-brand-ink hover:underline">
               {step.cta} <ArrowRight className="size-3.5" />
             </Link>
           </StaggerItem>

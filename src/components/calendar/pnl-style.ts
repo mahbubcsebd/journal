@@ -9,7 +9,8 @@ export function pnlFill(net: number, maxAbs: number, strength = 1): CSSPropertie
   if (!net || !maxAbs) return undefined;
   const t = Math.sqrt(Math.min(1, Math.abs(net) / maxAbs));
   const token = net > 0 ? "--chart-up" : "--chart-down";
-  const fill = Math.round((10 + 30 * t) * strength);
+  // Max ~24% tint so coloured text inside a cell keeps 4.5:1 contrast.
+  const fill = Math.round((6 + 18 * t) * strength);
   const edge = Math.round((22 + 40 * t) * strength);
   return {
     background: `color-mix(in oklch, var(${token}) ${fill}%, var(--card))`,

@@ -39,7 +39,7 @@ async function Challenges() {
       <PageHeader title="Challenges" description="Track prop-firm style evaluations: profit target, drawdown floor, daily loss and minimum days." actions={dialog} />
       {list.length === 0 ? (
         <Card className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink">
             <Trophy className="size-6" />
           </span>
           <p className="font-medium">No challenges yet</p>

@@ -34,7 +34,7 @@ function NavLinks({ layoutKey, onNavigate, pathname }: NavListProps & { pathname
     <nav className="grid gap-6">
       {NAV.map((group) => (
         <div key={group.label} className="grid gap-0.5">
-          <p className="px-3 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+          <p className="px-3 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             {group.label}
           </p>
           {group.items.map((item) => {
@@ -60,7 +60,7 @@ function NavLinks({ layoutKey, onNavigate, pathname }: NavListProps & { pathname
                 <Icon
                   className={cn(
                     "relative size-[18px] transition-colors",
-                    active ? "text-brand" : "text-muted-foreground/80 group-hover:text-foreground",
+                    active ? "text-brand-ink" : "text-muted-foreground/80 group-hover:text-foreground",
                   )}
                 />
                 <span className="relative">{item.label}</span>

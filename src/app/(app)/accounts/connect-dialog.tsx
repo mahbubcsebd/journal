@@ -17,7 +17,7 @@ export type KeyInfo = { id: string; name: string; prefix: string; lastUsedAt: st
 function Step({ n, title, children }: { n: number; title: string; children?: React.ReactNode }) {
   return (
     <li className="flex gap-3">
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-semibold text-brand">{n}</span>
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-semibold text-brand-ink">{n}</span>
       <div className="grid gap-1.5 pb-1">
         <p className="text-sm font-medium">{title}</p>
         {children}
@@ -68,7 +68,7 @@ export function ConnectDialog({
               onClick={() => setTab(o.k)}
               className={cn("flex items-start gap-3 rounded-xl border p-3 text-left transition", tab === o.k ? "border-brand bg-brand-soft/50" : "hover:border-foreground/25")}
             >
-              <o.icon className={cn("mt-0.5 size-5", tab === o.k ? "text-brand" : "text-muted-foreground")} />
+              <o.icon className={cn("mt-0.5 size-5", tab === o.k ? "text-brand-ink" : "text-muted-foreground")} />
               <span className="grid">
                 <span className="text-sm font-medium">{o.title}</span>
                 <span className="text-xs text-muted-foreground">{o.sub}</span>
@@ -98,7 +98,7 @@ export function ConnectDialog({
                         {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy"}
                       </Button>
                     </div>
-                    <p className="text-xs text-warning">Copy it now — it won&apos;t be shown again. One key works for all your MT5 accounts.</p>
+                    <p className="text-xs text-warning-ink">Copy it now — it won&apos;t be shown again. One key works for all your MT5 accounts.</p>
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">

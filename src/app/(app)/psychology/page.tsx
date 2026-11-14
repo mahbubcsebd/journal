@@ -161,7 +161,7 @@ async function Psychology({ searchParams }: { searchParams: PageProps<"/psycholo
                     <CardTitle>What your data says</CardTitle>
                     <CardDescription>Patterns found in your trades and journal (needs at least {MIN} trades per pattern)</CardDescription>
                   </div>
-                  <Lightbulb className="size-5 text-warning" />
+                  <Lightbulb className="size-5 text-warning-ink" />
                 </CardHeader>
                 <CardContent>
                   {notes.length === 0 ? (
@@ -178,7 +178,7 @@ async function Psychology({ searchParams }: { searchParams: PageProps<"/psycholo
                             n.tone === "bad" && "border-loss/25 bg-loss-soft/50",
                           )}
                         >
-                          <Brain className={cn("mt-0.5 size-4 shrink-0", n.tone === "bad" ? "text-loss" : "text-brand")} />
+                          <Brain className={cn("mt-0.5 size-4 shrink-0", n.tone === "bad" ? "text-loss" : "text-brand-ink")} />
                           {n.text}
                         </StaggerItem>
                       ))}

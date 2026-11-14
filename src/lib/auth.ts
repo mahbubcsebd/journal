@@ -17,6 +17,7 @@ export const auth = betterAuth({
       session: schema.session,
       account: schema.account,
       verification: schema.verification,
+      rateLimit: schema.rateLimit,
     },
   }),
   session: {
@@ -33,6 +34,8 @@ export const auth = betterAuth({
   },
   rateLimit: {
     enabled: true,
+    // Serverless instances don't share memory, so counters live in Postgres.
+    storage: "database",
     window: 60,
     max: 100,
     customRules: {

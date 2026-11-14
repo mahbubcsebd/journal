@@ -19,13 +19,16 @@
   --secondary-foreground: var(--foreground);
   --accent: oklch(0.955 0.004 260);
   --brand: oklch(0.64 0.15 162);
+  /* Darker variants for text on light surfaces (WCAG 4.5:1). */
+  --brand-ink: oklch(0.48 0.12 165);
+  --warning-ink: oklch(0.5 0.12 65);
   --brand-soft: oklch(0.95 0.04 162);
   /* Profit/loss: teal-green vs coral, separated by lightness so the pair stays
      distinguishable with red-green colour blindness (validated with the dataviz
      palette validator). Text tokens are darker for 4.5:1 contrast. */
-  --profit: oklch(0.5 0.12 172);
+  --profit: oklch(0.46 0.11 172);
   --profit-soft: oklch(0.95 0.035 172);
-  --loss: oklch(0.56 0.19 32);
+  --loss: oklch(0.52 0.19 32);
   --loss-soft: oklch(0.95 0.035 35);
   --chart-up: oklch(0.52 0.12 175);
   --chart-down: oklch(0.7 0.17 35);
@@ -52,6 +55,8 @@
   --secondary-foreground: var(--foreground);
   --accent: oklch(0.24 0.009 265);
   --brand: oklch(0.72 0.15 162);
+  --brand-ink: oklch(0.76 0.14 162);
+  --warning-ink: var(--warning);
   --brand-soft: oklch(0.3 0.06 162);
   --profit: oklch(0.76 0.12 168);
   --profit-soft: oklch(0.3 0.06 168);
@@ -82,6 +87,8 @@
   --color-accent: var(--accent);
   --color-brand: var(--brand);
   --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-warning-ink: var(--warning-ink);
   --color-profit: var(--profit);
   --color-profit-soft: var(--profit-soft);
   --color-loss: var(--loss);

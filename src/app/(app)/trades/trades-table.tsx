@@ -148,7 +148,7 @@ export function TradesTable({ rows, filters, timezone, total, pageSize, hasAccou
                       <span
                         key={g.id}
                         className="rounded-md px-1.5 py-0.5 text-[11px] font-medium"
-                        style={{ background: `color-mix(in oklch, ${g.color} 16%, transparent)`, color: g.color }}
+                        style={{ background: `color-mix(in oklch, ${g.color} 16%, transparent)`, color: `color-mix(in oklch, ${g.color} 55%, var(--foreground))` }}
                       >
                         {g.name}
                       </span>

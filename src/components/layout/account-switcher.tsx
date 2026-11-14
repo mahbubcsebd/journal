@@ -100,7 +100,7 @@ export function AccountSwitcher({
               </span>
             </span>
             {a.environment === "DEMO" && (
-              <span className="rounded bg-warning/15 px-1 text-[10px] font-medium text-warning">DEMO</span>
+              <span className="rounded bg-warning/15 px-1 text-[10px] font-medium text-warning-ink">DEMO</span>
             )}
           </DropdownMenuCheckboxItem>
         ))}

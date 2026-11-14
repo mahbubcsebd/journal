@@ -101,7 +101,7 @@ async function JournalList() {
 
       {entries.length === 0 ? (
         <Card className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink">
             <NotebookPen className="size-6" />
           </span>
           <p className="font-medium">No journal entries yet</p>

@@ -77,7 +77,7 @@ export function GoalBoard({ goals }: { goals: GoalView[] }) {
                   {meta.kind === "limit" ? " limit" : " target"}
                 </span>
               </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${meta.label} progress`} aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100}>
                 <motion.div
                   className="h-full rounded-full"
                   style={{ background: barColor(g.current.status, meta.kind) }}
