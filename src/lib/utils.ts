@@ -36,3 +36,21 @@ export function initials(nameOrEmail: string) {
   const parts = base.split(/[\s._-]+/).filter(Boolean);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "U";
 }
+
+export function formatDateTime(d: Date | string, timeZone: string, opts: Intl.DateTimeFormatOptions = {}) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    ...opts,
+  }).format(new Date(d));
+}
+
+export function formatPrice(n: number | null | undefined) {
+  if (n == null) return "—";
+  const digits = Math.abs(n) >= 1000 ? 2 : Math.abs(n) >= 10 ? 3 : 5;
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: digits });
+}

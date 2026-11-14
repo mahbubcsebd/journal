@@ -243,8 +243,8 @@ Protiti phase shesh e working demo + commit/push.
 - [x] **Phase 0** — Next 16 + Tailwind v4 + Motion + Drizzle/Supabase schema + design system + app shell (sidebar, topbar, mobile drawer, dark/light)
 - [x] **Phase 1** — Email OTP login (Nodemailer), onboarding, `proxy.ts` gate, settings
 - [x] Multi-account foundation — accounts CRUD, global account switcher, USC/USD-safe aggregation
-- [ ] Phase 2 — Trades table + trade detail + manual entry + tags
-- [ ] Phase 3 — MT5 statement import
+- [x] **Phase 2** — Trades table (filters, sort, pagination, summary, CSV export), trade detail (risk map, journal: rating, setup, emotions, plan, mistakes, tags, notes, initial SL → R), manual/backtest entry, tags & mistakes board with P&L per tag
+- [x] **Phase 3** — Import: MT5 report (.html UTF-16 / .xlsx), Exness Personal Area CSV, generic CSV; account auto-detect (creates the sub-account if new), preview, idempotent re-import, deposits/withdrawals, daily stats rebuild
 - [ ] Phase 4 — Calendar + full dashboard
 - [ ] Phase 5 — MetaApi + EA auto-sync
 - [ ] Phase 6–10 — Analytics, journaling, goals, AI, launch

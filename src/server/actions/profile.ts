@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { user } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
+import { rebuildAllDailyStats } from "@/server/services/trades";
 
 const isTimezone = (tz: string) => {
   try {
@@ -37,6 +38,9 @@ export async function saveProfile(_: ProfileState, formData: FormData): Promise<
     .update(user)
     .set({ ...parsed.data, ...(finishOnboarding ? { onboarded: true } : {}) })
     .where(eq(user.id, current.id));
+
+  // Trading days are bucketed by timezone, so a change re-buckets every account.
+  if (parsed.data.timezone !== current.timezone) await rebuildAllDailyStats(current.id);
 
   revalidatePath("/", "layout");
   if (finishOnboarding) redirect("/accounts?welcome=1");

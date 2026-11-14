@@ -4,15 +4,32 @@ import { AnimatePresence, motion } from "motion/react";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NAV } from "./nav-config";
 
-function NavList({ layoutKey, onNavigate }: { layoutKey: string; onNavigate?: () => void }) {
-  const pathname = usePathname();
+type NavListProps = { layoutKey: string; onNavigate?: () => void };
+
+/**
+ * On dynamic routes the pathname is request data, so the active state streams
+ * in behind Suspense; the fallback renders the same list with nothing active.
+ */
+function NavList(props: NavListProps) {
+  return (
+    <Suspense fallback={<NavLinks {...props} pathname={null} />}>
+      <ActiveNavLinks {...props} />
+    </Suspense>
+  );
+}
+
+function ActiveNavLinks(props: NavListProps) {
+  return <NavLinks {...props} pathname={usePathname()} />;
+}
+
+function NavLinks({ layoutKey, onNavigate, pathname }: NavListProps & { pathname: string | null }) {
   return (
     <nav className="grid gap-6">
       {NAV.map((group) => (
@@ -21,7 +38,7 @@ function NavList({ layoutKey, onNavigate }: { layoutKey: string; onNavigate?: ()
             {group.label}
           </p>
           {group.items.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            const active = pathname != null && (pathname === item.href || pathname.startsWith(item.href + "/"));
             const Icon = item.icon;
             return (
               <Link
@@ -73,7 +90,6 @@ export function Sidebar() {
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -97,7 +113,6 @@ export function MobileNav() {
               onClick={() => setOpen(false)}
             />
             <motion.aside
-              key={pathname}
               className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-sidebar shadow-pop lg:hidden"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}

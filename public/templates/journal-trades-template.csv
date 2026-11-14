@@ -1,0 +1,2 @@
+position,symbol,side,volume,open_time,open_price,close_time,close_price,sl,tp,commission,swap,profit
+1001,XAUUSD,buy,0.10,2026-11-10 08:15:00,2650.50,2026-11-10 09:40:00,2660.50,2645.50,2660.50,-0.70,0,100.00
