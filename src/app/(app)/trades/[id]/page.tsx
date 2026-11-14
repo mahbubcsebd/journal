@@ -14,6 +14,12 @@ import { cn, formatDateTime, formatMoney, formatPrice } from "@/lib/utils";
 import { getFilterOptions, getNeighbours, getTrade } from "@/server/queries/trades";
 import { PriceLadder } from "./price-ladder";
 import { TradeImages } from "./trade-images";
+import { TradeAi } from "./trade-ai";
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { aiInsight } from "@/db/schema";
+import { aiConfigured } from "@/lib/ai/gemini";
+import type { TradeFeedback } from "@/lib/ai/schemas";
 import { TradeJournal } from "./trade-journal";
 
 export const metadata: Metadata = { title: "Trade" };
@@ -43,9 +49,10 @@ async function TradeView({ params }: { params: PageProps<"/trades/[id]">["params
   const t = await getTrade(user.id, id);
   if (!t) notFound();
   const { ids } = await getSelectedAccountIds(user.id);
-  const [options, nav] = await Promise.all([
+  const [options, nav, [lastFeedback]] = await Promise.all([
     getFilterOptions(user.id),
     getNeighbours(user.id, ids, t.closeTime ?? t.openTime, t.id),
+    db.select({ content: aiInsight.content }).from(aiInsight).where(and(eq(aiInsight.userId, user.id), eq(aiInsight.tradeId, t.id))).orderBy(desc(aiInsight.createdAt)).limit(1),
   ]);
   const cur = t.account.currency;
   const tz = user.timezone;
@@ -134,6 +141,14 @@ async function TradeView({ params }: { params: PageProps<"/trades/[id]">["params
           </FadeIn>
           <FadeIn delay={0.15}>
             <TradeImages tradeId={t.id} initial={t.images} />
+          </FadeIn>
+          <FadeIn delay={0.2}>
+            <TradeAi
+              tradeId={t.id}
+              configured={aiConfigured()}
+              language={user.settings.aiLanguage ?? "en"}
+              initial={(lastFeedback?.content as { feedback?: TradeFeedback } | undefined)?.feedback ?? null}
+            />
           </FadeIn>
         </div>
         <FadeIn delay={0.1}>

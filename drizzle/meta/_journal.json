@@ -15,6 +15,13 @@
       "when": 1794663361563,
       "tag": "0001_goals_challenges",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794667673062,
+      "tag": "0002_notifications_ai",
+      "breakpoints": true
     }
   ]
 }

@@ -3,14 +3,14 @@
 import { Loader2, Monitor, Moon, Sun } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
-import { useActionState, useEffect, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/input";
 import { COMMON_TIMEZONES, CURRENCIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { saveProfile, type ProfileState } from "@/server/actions/profile";
+import { saveNotificationSettings, saveProfile, sendWeeklyReportNow, type ProfileState } from "@/server/actions/profile";
 
 const noop = () => () => {};
 
@@ -20,6 +20,8 @@ export function SettingsForm(props: {
   timezone: string;
   baseCurrency: string;
   weekStartsOn: number;
+  emailWeeklyReport: boolean;
+  emailGoalAlerts: boolean;
 }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(saveProfile, {});
   const zones = COMMON_TIMEZONES.includes(props.timezone) ? COMMON_TIMEZONES : [props.timezone, ...COMMON_TIMEZONES];
@@ -72,6 +74,7 @@ export function SettingsForm(props: {
           </form>
         </CardContent>
       </Card>
+      <Notifications weekly={props.emailWeeklyReport} alerts={props.emailGoalAlerts} email={props.email} />
       <Card>
         <CardHeader className="flex-col gap-1">
           <CardTitle>Appearance</CardTitle>
@@ -82,6 +85,87 @@ export function SettingsForm(props: {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint: string }) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-4">
+      <span className="grid gap-0.5">
+        <span className="text-sm font-medium">{label}</span>
+        <span className="text-[13px] text-muted-foreground">{hint}</span>
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className={cn("relative mt-0.5 h-6 w-10 shrink-0 rounded-full transition-colors", checked ? "bg-brand" : "bg-muted")}
+      >
+        <motion.span
+          layout
+          transition={{ type: "spring", stiffness: 600, damping: 35 }}
+          className={cn("absolute top-0.5 size-5 rounded-full bg-white shadow-soft", checked ? "right-0.5" : "left-0.5")}
+        />
+      </button>
+    </label>
+  );
+}
+
+function Notifications({ weekly: w, alerts: a, email }: { weekly: boolean; alerts: boolean; email: string }) {
+  const [weekly, setWeekly] = useState(w);
+  const [alerts, setAlerts] = useState(a);
+  const [pending, start] = useTransition();
+  const save = (next: { emailWeeklyReport: boolean; emailGoalAlerts: boolean }) =>
+    start(async () => {
+      await saveNotificationSettings(next);
+      toast.success("Notification settings saved");
+    });
+  return (
+    <Card>
+      <CardHeader className="flex-col gap-1">
+        <CardTitle>Email notifications</CardTitle>
+        <CardDescription>Sent to {email}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        <Toggle
+          checked={weekly}
+          onChange={(v) => {
+            setWeekly(v);
+            save({ emailWeeklyReport: v, emailGoalAlerts: alerts });
+          }}
+          label="Weekly summary"
+          hint="Last week's P&L, win rate, best and worst day and goals — on the first day of your week."
+        />
+        <Toggle
+          checked={alerts}
+          onChange={(v) => {
+            setAlerts(v);
+            save({ emailWeeklyReport: weekly, emailGoalAlerts: v });
+          }}
+          label="Goal limit alerts"
+          hint="An email when you break a max loss or max trades limit (once per period)."
+        />
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const r = await sendWeeklyReportNow();
+                if (r.ok) toast.success(r.message);
+                else toast.error(r.message);
+              })
+            }
+          >
+            {pending && <Loader2 className="animate-spin" />}
+            Send last week&apos;s summary now
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

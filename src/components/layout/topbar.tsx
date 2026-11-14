@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser, getSelectedAccountIds, getUserAccounts } from "@/lib/session";
+import { todayIn } from "@/lib/dates";
 import { AccountSwitcher } from "./account-switcher";
+import { CommandMenu } from "./command-menu";
 import { MobileNav } from "./sidebar";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
@@ -14,6 +16,9 @@ export function Topbar() {
         <AccountSwitcherSlot />
       </Suspense>
       <div className="flex-1" />
+      <Suspense fallback={<Skeleton className="hidden h-9 w-56 rounded-lg md:block" />}>
+        <CommandSlot />
+      </Suspense>
       <ThemeToggle />
       <Suspense fallback={<Skeleton className="size-9 rounded-full" />}>
         <UserSlot />
@@ -46,4 +51,16 @@ async function UserSlot() {
   const user = await getCurrentUser();
   if (!user) return null;
   return <UserMenu name={user.name} email={user.email} />;
+}
+
+async function CommandSlot() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const accounts = await getUserAccounts(user.id);
+  return (
+    <CommandMenu
+      today={todayIn(user.timezone)}
+      accounts={accounts.map((a) => ({ id: a.id, nickname: a.nickname, login: a.login, color: a.color }))}
+    />
+  );
 }

@@ -2,6 +2,8 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { sendGoalAlerts } from "@/server/services/notifications";
 import { db } from "@/db";
 import { syncLog, tradingAccount } from "@/db/schema";
 import { parseReportFile, ReportParseError, type ParsedReport } from "@/lib/import";
@@ -167,6 +169,15 @@ export async function commitImport(formData: FormData): Promise<ImportResult> {
     status: "OK",
     message: `${res.inserted} new, ${res.updated} updated, ${res.skipped} skipped (${report.format})`,
     itemCount: res.inserted + res.updated,
+  });
+
+  // New trades may break a limit goal for the current period: email after responding.
+  after(async () => {
+    try {
+      await sendGoalAlerts(u);
+    } catch (e) {
+      console.error("goal alerts after import failed", e);
+    }
   });
 
   revalidatePath("/", "layout");

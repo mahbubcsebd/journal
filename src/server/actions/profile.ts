@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { user } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
+import { sendWeeklyReportIfDue } from "@/server/services/notifications";
 import { rebuildAllDailyStats } from "@/server/services/trades";
 
 const isTimezone = (tz: string) => {
@@ -51,4 +52,32 @@ export async function saveProfile(_: ProfileState, formData: FormData): Promise<
   revalidatePath("/", "layout");
   if (finishOnboarding) redirect("/accounts?welcome=1");
   return { ok: true };
+}
+
+const notificationsSchema = z.object({
+  emailWeeklyReport: z.boolean(),
+  emailGoalAlerts: z.boolean(),
+});
+
+export async function saveNotificationSettings(input: z.infer<typeof notificationsSchema>) {
+  const current = await getCurrentUser();
+  if (!current) redirect("/login");
+  const data = notificationsSchema.parse(input);
+  await db.update(user).set({ settings: { ...current.settings, ...data } }).where(eq(user.id, current.id));
+  revalidatePath("/settings");
+}
+
+/** Send last week's summary right now, ignoring the schedule (for checking email setup). */
+export async function sendWeeklyReportNow(): Promise<{ ok: boolean; message: string }> {
+  const current = await getCurrentUser();
+  if (!current) redirect("/login");
+  try {
+    const status = await sendWeeklyReportIfDue(current, { force: true });
+    return status === "sent"
+      ? { ok: true, message: `Sent to ${current.email}` }
+      : { ok: false, message: "No closed trades last week, so there's nothing to report yet." };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "Couldn't send the email. Check the SMTP settings." };
+  }
 }

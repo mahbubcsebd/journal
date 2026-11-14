@@ -27,6 +27,8 @@ async function Settings() {
       timezone={user.timezone}
       baseCurrency={user.baseCurrency}
       weekStartsOn={user.settings.weekStartsOn ?? 1}
+      emailWeeklyReport={user.settings.emailWeeklyReport !== false}
+      emailGoalAlerts={user.settings.emailGoalAlerts !== false}
     />
   );
 }

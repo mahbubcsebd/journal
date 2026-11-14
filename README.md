@@ -23,6 +23,11 @@ Next.js 16 · React 19 · Tailwind CSS v4 · Motion · Supabase Postgres · Driz
      Create a **private** bucket (default name `trade-images`) in Supabase → Storage. Images are only
      served through `/api/trade-images/[id]` after an ownership check. Without these in development,
      files are stored in `.uploads/`.
+   - `GEMINI_API_KEY` — AI insights. Create a free key at Google AI Studio (aistudio.google.com).
+     `GEMINI_MODEL` defaults to `gemini-2.5-flash`; change it if Google retires that model. Without a
+     key the AI pages show a setup notice and everything else works.
+   - `CRON_SECRET` — protects `/api/cron/daily` (weekly summary + goal-limit emails). `vercel.json`
+     schedules it once a day; Vercel sends the secret automatically when it is set in the project.
 3. **Database**
    ```bash
    npm run db:migrate
@@ -42,6 +47,12 @@ Next.js 16 · React 19 · Tailwind CSS v4 · Motion · Supabase Postgres · Driz
 | `npm run db:generate` | Generate a migration from `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:studio` | Open Drizzle Studio |
+
+## Keyboard shortcuts
+
+`⌘K` / `Ctrl K` or `/` opens the command menu (search trades, jump anywhere, run actions).
+`G` then a letter jumps to a page (`G D` dashboard, `G C` calendar, `G T` trades, `G J` journal …),
+`Shift N` adds a trade and `?` lists every shortcut.
 
 ## Deploying to Vercel
 

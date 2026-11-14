@@ -57,6 +57,12 @@ export type UserSettings = {
   locale?: "en" | "bn";
   /** Pre-market checklist items the user ticks every trading day. */
   dailyChecklist?: string[];
+  /** Email the weekly summary (default on). */
+  emailWeeklyReport?: boolean;
+  /** Email when a goal limit is broken (default on). */
+  emailGoalAlerts?: boolean;
+  /** Language for AI insights. */
+  aiLanguage?: "en" | "bn";
 };
 
 export type JournalPremarket = {
@@ -495,12 +501,28 @@ export const syncLog = pgTable(
   (t) => [index("sync_log_user_idx").on(t.userId, t.createdAt)],
 );
 
+/** Emails already sent, so cron runs and re-imports never send the same one twice. */
+export const notificationLog = pgTable(
+  "notification_log",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // WEEKLY_REPORT | GOAL_ALERT
+    key: text("key").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("notification_log_uq").on(t.userId, t.kind, t.key)],
+);
+
 export const aiInsight = pgTable("ai_insight", {
   id: id(),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  scope: text("scope").notNull(), // WEEK | MONTH | TRADE | CUSTOM
+  scope: text("scope").notNull(), // WEEK | MONTH | RANGE | TRADE
+  tradeId: text("trade_id").references(() => trade.id, { onDelete: "cascade" }),
   rangeStart: date("range_start", { mode: "string" }),
   rangeEnd: date("range_end", { mode: "string" }),
   accountIds: jsonb("account_ids").$type<string[]>(),
