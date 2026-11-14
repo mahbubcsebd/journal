@@ -3,6 +3,9 @@ import { Topbar } from "@/components/layout/topbar";
 import { GoalAlerts } from "@/components/goals/goal-alerts";
 import { AutoSync } from "@/components/layout/auto-sync";
 
+// Fail fast instead of hanging for Vercel's 300s default if the DB stalls.
+export const maxDuration = 60;
+
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-dvh">
