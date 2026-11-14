@@ -1,7 +1,7 @@
-# TradeJournal — Master Plan
+# Journal — Master Plan
 
 > Exness (MT4/MT5) account er sob trade auto-sync hobe, sathe world-class analytics, calendar, journaling, psychology tracking.
-> Stack: **Next.js 16 · Tailwind CSS v4 · Framer Motion · PostgreSQL**
+> Stack: **Next.js 16 · Tailwind CSS v4 · Framer Motion · Supabase Postgres · Drizzle · Better Auth (email OTP via Nodemailer) · Gemini**
 
 ---
 
@@ -20,32 +20,30 @@ Exness er kono public "trade history API" nei. Exness account gulo **MetaTrader 
 - Credentials AES-256-GCM e encrypt kore DB te; EA er jonno per-account API key + HMAC signature.
 - Duplicate thekate `(accountId, ticket/dealId)` unique — same trade dui source theke elo-o ekta entry hobe.
 
+**Multiple Exness sub-accounts:** Exness Personal Area er protiti MT5 login (Standard, Standard Cent, Pro, Raw Spread, Zero — real/demo) alada `trading_account` row. Topbar er account switcher diye *All accounts*, ekta account, ba jekono kichu account ek sathe select kora jay (cookie te save thake, server e validate hoy). EA mode e ekta user-level API key; EA payload e login + server thake, tai notun sub-account e EA lagale seta auto-detect hoye add hoye jabe. Cent account (USC) ar USD account mix korle USC → USD (÷100) convert kore jog hoy.
+
 **Sync flow:** deal ashe → normalize (symbol, lot, entry/exit, SL/TP, commission, swap, net P&L, duration) → position-level "Trade" e group (partial close soho) → DB → stats recalculate → browser e real-time push (SSE) → calendar/dashboard nijei update hoye jabe.
 
 ---
 
-## 2. Tech stack
+## 2. Tech stack (final)
 
 | Layer | Choice |
 |---|---|
-| Framework | **Next.js 16** (App Router, React 19, Server Components, Server Actions, Turbopack, `proxy.ts`) |
-| Styling | **Tailwind CSS v4** + **shadcn/ui** (Radix) — elegant, accessible components |
-| Animation | **Framer Motion** (`motion/react`) — page transitions, layout animations, number counters, calendar cell hover |
-| Theme | `next-themes` — Dark / Light / System, smooth transition |
-| Auth | **Better Auth** + **Email OTP plugin** (passwordless: email dao → 6-digit OTP → login) |
-| Email | **Resend** + React Email templates (OTP, weekly report) |
-| Database | **PostgreSQL** (Neon / Supabase) + **Prisma ORM** |
-| Data fetching | Server Components + **TanStack Query** (client cache, optimistic update) |
-| Real-time | Server-Sent Events (ba Pusher/Ably jodi Vercel e scale lage) |
-| Background jobs | **Inngest** (ba Trigger.dev) — periodic sync, stats rebuild, weekly email |
-| Charts | **Recharts** (analytics) + **TradingView Lightweight Charts** (trade replay, equity) |
-| Tables | **TanStack Table** (sort, filter, column toggle, virtualized) |
-| Forms | React Hook Form + Zod |
-| File storage | Cloudflare R2 / UploadThing (trade screenshots) |
-| Rich text | Tiptap (journal notes) |
-| AI insights | Claude API (trade pattern analysis, weekly review) |
+| Framework | **Next.js 16.4** (App Router, React 19.3, Cache Components + Partial Prefetching, Server Actions, Turbopack, `proxy.ts`) |
+| Styling | **Tailwind CSS v4** + Radix primitives (`radix-ui`) — own component set in `src/components/ui` |
+| Animation | **Motion** (Framer Motion, `motion/react`) |
+| Theme | `next-themes` — Light / Dark / System |
+| Auth | **Better Auth** + Email OTP plugin (passwordless, hashed OTP, rate limited) |
+| Email | **Nodemailer** (any SMTP — Gmail App Password works) |
+| Database | **Supabase Postgres** + **Drizzle ORM** (`postgres-js`, transaction pooler on Vercel) |
+| Storage | Supabase Storage (trade screenshots) |
+| Real-time | Supabase Realtime broadcast → client refresh |
+| Background jobs | Vercel Cron + Inngest (periodic MetaApi sync, stats rebuild, weekly email) |
+| Charts | Recharts + TradingView Lightweight Charts |
+| AI insights | **Google Gemini** free API (`@google/genai`, model configurable via `GEMINI_MODEL`) |
 | Testing | Vitest (stats engine) + Playwright (E2E) |
-| Deploy | Vercel + Neon |
+| Deploy | **Vercel** |
 
 ---
 
@@ -53,11 +51,10 @@ Exness er kono public "trade history API" nei. Exness account gulo **MetaTrader 
 
 ### Public
 - `/` — Landing page (hero, feature showcase, animated preview)
-- `/login` — Email input → OTP step (same page, animated step transition)
-- `/verify` — OTP input (6 box, auto-submit, resend timer)
+- `/login` — Email → 6-digit OTP (same page, animated step transition, auto-submit, resend timer)
 - `/onboarding` — Name, timezone, base currency, first account connect
 
-### App (`/app/...`, protected)
+### App (protected)
 | Route | Ki thakbe |
 |---|---|
 | `/dashboard` | KPI cards (Net P&L, Win rate, Profit factor, Expectancy, Avg R, Max DD), equity curve, mini calendar, recent trades, open positions (live), today vs goal, streaks |
@@ -228,14 +225,26 @@ Protiti phase shesh e working demo + commit/push.
 
 ---
 
-## 9. Start korar age tomar decision lagbe
+## 9. Decisions (confirmed)
 
-1. **Exness account MT4 na MT5?** (EA MT5 er jonno likhbo; MT4 hole MQL4 version lagbe)
-2. **MetaApi (paid, PC bondho thakleo sync) naki sudhu free EA + import?** Recommendation: duto-i build kori, tumi je ta chao use korba.
-3. **App ki sudhu tomar nijer jonno naki pore onno user-o use korbe (SaaS)?** Multi-user dhore build korbo, tobe billing/subscription lagbe kina bolo.
-4. **Hosting:** Vercel + Neon (free tier e start) — thik ache?
-5. **Email sender:** Resend er jonno ekta domain lagbe (OTP email pathate). Tomar domain ache?
-6. **AI insights** er jonno Claude API key use korte rajee?
-7. **App er naam** ki hobe?
+| Question | Decision |
+|---|---|
+| Platform | **MT5** |
+| Sync | **Duitai** — MetaApi + MT5 EA (plus statement import) |
+| Hosting | **Vercel** |
+| OTP email | **Nodemailer** (SMTP) |
+| AI | **Gemini free API** |
+| App name | **Journal** |
+| Data | **Supabase** — login korlei same user er purono sob data |
+| Accounts | Multiple Exness sub-accounts, alada track + filter |
 
-Ei uttor gula pele Phase 0 theke build start korbo.
+## 10. Progress
+
+- [x] **Phase 0** — Next 16 + Tailwind v4 + Motion + Drizzle/Supabase schema + design system + app shell (sidebar, topbar, mobile drawer, dark/light)
+- [x] **Phase 1** — Email OTP login (Nodemailer), onboarding, `proxy.ts` gate, settings
+- [x] Multi-account foundation — accounts CRUD, global account switcher, USC/USD-safe aggregation
+- [ ] Phase 2 — Trades table + trade detail + manual entry + tags
+- [ ] Phase 3 — MT5 statement import
+- [ ] Phase 4 — Calendar + full dashboard
+- [ ] Phase 5 — MetaApi + EA auto-sync
+- [ ] Phase 6–10 — Analytics, journaling, goals, AI, launch

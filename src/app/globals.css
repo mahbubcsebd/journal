@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: oklch(0.985 0.002 260);
+  --foreground: oklch(0.18 0.01 260);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --muted: oklch(0.965 0.003 260);
+  --muted-foreground: oklch(0.52 0.015 260);
+  --border: oklch(0.915 0.005 260);
+  --input: oklch(0.9 0.006 260);
+  --ring: oklch(0.62 0.15 162);
+  --primary: oklch(0.2 0.01 260);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.955 0.004 260);
+  --secondary-foreground: var(--foreground);
+  --accent: oklch(0.955 0.004 260);
+  --brand: oklch(0.64 0.15 162);
+  --brand-soft: oklch(0.95 0.04 162);
+  --profit: oklch(0.6 0.15 155);
+  --profit-soft: oklch(0.94 0.05 155);
+  --loss: oklch(0.6 0.2 18);
+  --loss-soft: oklch(0.95 0.035 18);
+  --warning: oklch(0.75 0.15 75);
+  --sidebar: oklch(0.975 0.003 260);
+  --shadow-color: 220 15% 20%;
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: oklch(0.145 0.006 265);
+  --foreground: oklch(0.96 0.004 265);
+  --card: oklch(0.18 0.007 265);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.2 0.008 265);
+  --muted: oklch(0.22 0.008 265);
+  --muted-foreground: oklch(0.68 0.012 265);
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.12);
+  --ring: oklch(0.7 0.15 162);
+  --primary: oklch(0.96 0.004 265);
+  --primary-foreground: oklch(0.17 0.006 265);
+  --secondary: oklch(0.23 0.008 265);
+  --secondary-foreground: var(--foreground);
+  --accent: oklch(0.24 0.009 265);
+  --brand: oklch(0.72 0.15 162);
+  --brand-soft: oklch(0.3 0.06 162);
+  --profit: oklch(0.72 0.16 155);
+  --profit-soft: oklch(0.3 0.07 155);
+  --loss: oklch(0.68 0.19 18);
+  --loss-soft: oklch(0.3 0.08 18);
+  --warning: oklch(0.8 0.14 75);
+  --sidebar: oklch(0.16 0.007 265);
+  --shadow-color: 0 0% 0%;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-profit: var(--profit);
+  --color-profit-soft: var(--profit-soft);
+  --color-loss: var(--loss);
+  --color-loss-soft: var(--loss-soft);
+  --color-warning: var(--warning);
+  --color-sidebar: var(--sidebar);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --shadow-soft: 0 1px 2px hsl(var(--shadow-color) / 0.04), 0 4px 16px -4px hsl(var(--shadow-color) / 0.08);
+  --shadow-pop: 0 2px 4px hsl(var(--shadow-color) / 0.06), 0 16px 40px -8px hsl(var(--shadow-color) / 0.22);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--brand) 30%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+@keyframes menu-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-2px); }
+}
+@keyframes dialog-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+}
