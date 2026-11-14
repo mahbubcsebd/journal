@@ -19,8 +19,8 @@ import { getSelectedAccountIds, getUserAccounts, requireUser } from "@/lib/sessi
 import { cn, formatDateTime, formatMoney, formatPercent } from "@/lib/utils";
 import { getBreakdowns, getDailyPnl } from "@/server/queries/calendar";
 import { listTrades } from "@/server/queries/trades";
-import { RangeTabs } from "./range-tabs";
-import { RANGES, type RangeKey } from "./ranges";
+import { RangeTabs } from "@/components/layout/range-tabs";
+import { parseRange, rangeStart } from "@/lib/ranges";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -46,26 +46,9 @@ function DashboardSkeleton() {
   );
 }
 
-function rangeStart(range: RangeKey, today: string) {
-  switch (range) {
-    case "7d":
-      return addDays(today, -6);
-    case "30d":
-      return addDays(today, -29);
-    case "90d":
-      return addDays(today, -89);
-    case "ytd":
-      return `${today.slice(0, 4)}-01-01`;
-    case "1y":
-      return addDays(today, -364);
-    default:
-      return undefined;
-  }
-}
-
 async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard">["searchParams"] }) {
   const [user, sp] = await Promise.all([requireUser(), searchParams]);
-  const range = (RANGES.find((r) => r.key === sp.range)?.key ?? "30d") as RangeKey;
+  const range = parseRange(sp.range, "30d");
   const today = todayIn(user.timezone);
   const from = rangeStart(range, today);
   const monthStart = `${today.slice(0, 7)}-01`;
@@ -92,7 +75,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
       <PageHeader
         title={`Hi, ${first}`}
         description={from ? `${formatDay(from, { month: "short", day: "numeric", year: "numeric" })} – today` : "All time"}
-        actions={<RangeTabs active={range} />}
+        actions={<RangeTabs active={range} basePath="/dashboard" />}
       />
 
       <Stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

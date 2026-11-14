@@ -165,7 +165,7 @@ export function TradeJournal({
       <div className="grid gap-5 p-5">
         <div className="grid gap-2">
           <Label>Execution rating</Label>
-          <div className="flex gap-1" onMouseLeave={() => undefined}>
+          <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
               <motion.button
                 key={n}

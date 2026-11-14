@@ -247,4 +247,6 @@ Protiti phase shesh e working demo + commit/push.
 - [x] **Phase 3** — Import: MT5 report (.html UTF-16 / .xlsx), Exness Personal Area CSV, generic CSV; account auto-detect (creates the sub-account if new), preview, idempotent re-import, deposits/withdrawals, daily stats rebuild
 - [x] **Phase 4** — Calendar (month with weekly totals, week, year heatmap, day drawer + day page with intraday P&L, keyboard nav, week-start setting) and dashboard (range tabs, 8 KPIs, equity + drawdown, daily P&L bars, mini month, recent trades, symbols, long vs short). Profit/loss colours validated for colour-blind readers
 - [ ] Phase 5 — MetaApi + EA auto-sync
-- [ ] Phase 6–10 — Analytics, journaling, goals, AI, launch
+- [x] **Phase 6** — Analytics (overview with 20 stats + equity/drawdown + monthly returns; time: hour, weekday, session, hold time, month; instruments: symbol, side, account; setups, tags, mistakes, emotions, discipline, rating; risk: R and P&L distributions, hold-time scatter, lot size) and Reports (day/week/month/year/custom, comparison with the previous period, best/worst trades, breakdowns, CSV, print-to-PDF, share-card PNG with an option to hide amounts)
+- [ ] Phase 5 — MetaApi + MT5 EA auto-sync (needs a MetaApi token and an MT5 terminal to test)
+- [ ] Phase 7–10 — Journaling, goals, AI, launch
