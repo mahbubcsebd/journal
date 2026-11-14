@@ -1,0 +1,1 @@
+ALTER TABLE "trading_account" ADD COLUMN "open_positions" jsonb;

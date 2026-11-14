@@ -172,6 +172,8 @@ export const tradingAccount = pgTable(
     equity: money("equity"),
     initialBalance: money("initial_balance"),
     lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    /** Latest snapshot of open positions from the EA / MetaApi (floating P&L). */
+    openPositions: jsonb("open_positions").$type<OpenPosition[]>(),
     archived: boolean("archived").notNull().default(false),
     ...timestamps,
   },
@@ -180,6 +182,20 @@ export const tradingAccount = pgTable(
     index("trading_account_user_idx").on(t.userId),
   ],
 );
+
+export type OpenPosition = {
+  ticket: string;
+  symbol: string;
+  side: "LONG" | "SHORT";
+  volume: number;
+  openPrice: number;
+  currentPrice: number | null;
+  sl: number | null;
+  tp: number | null;
+  profit: number;
+  swap: number;
+  openTime: string;
+};
 
 /** Per-user key used by the MT5 Expert Advisor to push deals (HMAC signed). */
 export const syncKey = pgTable("sync_key", {

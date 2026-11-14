@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { GoalAlerts } from "@/components/goals/goal-alerts";
+import { AutoSync } from "@/components/layout/auto-sync";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -10,6 +11,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         <Topbar />
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <GoalAlerts />
+          <AutoSync />
           {children}
         </main>
       </div>

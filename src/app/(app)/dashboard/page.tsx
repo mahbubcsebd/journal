@@ -7,6 +7,7 @@ import { EquityChart } from "@/components/charts/equity-chart";
 import { pnlText } from "@/components/calendar/pnl-style";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { MiniMonth } from "@/components/dashboard/mini-month";
+import { OpenPositions } from "@/components/dashboard/open-positions";
 import { PageHeader } from "@/components/layout/page-header";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { Badge } from "@/components/ui/badge";
@@ -135,6 +136,8 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
           />
         </StaggerItem>
       </Stagger>
+
+      <OpenPositions accounts={accounts.filter((a) => ids.includes(a.id))} timezone={user.timezone} />
 
       {s.trades === 0 ? (
         <GettingStarted hasAccount={accounts.length > 0} />

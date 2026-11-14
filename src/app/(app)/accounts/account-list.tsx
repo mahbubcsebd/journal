@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Archive, MoreHorizontal, Pencil, PlugZap, Server, Trash2, Wallet } from "lucide-react";
+import { Archive, MoreHorizontal, Pencil, Plug, PlugZap, RefreshCw, Server, Trash2, Unplug, Wallet } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { TradingAccount } from "@/db/schema";
-import { formatMoney } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { disconnectAccount, syncAccountNow } from "@/server/actions/sync";
+import { ConnectDialog, type KeyInfo } from "./connect-dialog";
 import { archiveAccount, deleteAccount } from "@/server/actions/accounts";
 import { AccountDialog } from "./account-dialog";
 
@@ -26,8 +29,35 @@ const STATUS: Record<TradingAccount["status"], { label: string; variant: "profit
   PENDING: { label: "Not connected", variant: "default" },
 };
 
-export function AccountList({ accounts }: { accounts: TradingAccount[] }) {
+const METHOD: Record<TradingAccount["syncMethod"], string> = {
+  EA: "MT5 EA",
+  METAAPI: "MetaApi",
+  IMPORT: "Imported",
+  MANUAL: "Manual",
+};
+
+function ago(iso: Date | string | null) {
+  if (!iso) return null;
+  const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86_400) return `${Math.floor(s / 3600)} h ago`;
+  return `${Math.floor(s / 86_400)} d ago`;
+}
+
+export function AccountList({
+  accounts,
+  keys,
+  origin,
+  metaApi,
+}: {
+  accounts: TradingAccount[];
+  keys: KeyInfo[];
+  origin: string;
+  metaApi: boolean;
+}) {
   const [editing, setEditing] = useState<TradingAccount | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   if (accounts.length === 0) {
@@ -87,6 +117,19 @@ export function AccountList({ accounts }: { accounts: TradingAccount[] }) {
                       <DropdownMenuItem onSelect={() => setEditing(a)}>
                         <Pencil /> Edit
                       </DropdownMenuItem>
+                      {(a.syncMethod === "EA" || a.syncMethod === "METAAPI") && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            if (!confirm(`Stop auto-sync for ${a.nickname}? Trades already synced stay in your journal.`)) return;
+                            startTransition(async () => {
+                              await disconnectAccount(a.id);
+                              toast.success("Auto-sync stopped");
+                            });
+                          }}
+                        >
+                          <Unplug /> Stop auto-sync
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         onSelect={() =>
                           startTransition(async () => {
@@ -118,7 +161,10 @@ export function AccountList({ accounts }: { accounts: TradingAccount[] }) {
                   <Badge variant="outline">{a.accountType}</Badge>
                   <Badge variant={a.environment === "DEMO" ? "warning" : "brand"}>{a.environment === "DEMO" ? "Demo" : "Real"}</Badge>
                   <Badge variant={status.variant}>{status.label}</Badge>
+                  <Badge variant="outline">{METHOD[a.syncMethod]}</Badge>
                 </div>
+                {a.status === "ERROR" && a.statusMessage && <p className="mt-2 text-xs text-loss">{a.statusMessage}</p>}
+                {a.status === "SYNCING" && a.statusMessage && <p className="mt-2 text-xs text-muted-foreground">{a.statusMessage}</p>}
 
                 <dl className="mt-5 grid grid-cols-2 gap-3 border-t pt-4 text-sm">
                   <div>
@@ -133,13 +179,45 @@ export function AccountList({ accounts }: { accounts: TradingAccount[] }) {
                       {a.equity != null ? formatMoney(a.equity, a.currency) : "—"}
                     </dd>
                   </div>
-                  <div className="col-span-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="col-span-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <Server className="size-3.5" /> {a.server}
                     <span className="mx-1">·</span>
                     <PlugZap className="size-3.5" />
-                    {a.lastSyncAt ? `Synced ${new Date(a.lastSyncAt).toLocaleString()}` : "Auto-sync arrives in Phase 5"}
+                    <span suppressHydrationWarning>{a.lastSyncAt ? `Synced ${ago(a.lastSyncAt)}` : "Not synced yet"}</span>
+                    {(a.openPositions?.length ?? 0) > 0 && <span>· {a.openPositions!.length} open</span>}
                   </div>
                 </dl>
+                <div className="mt-4 flex gap-2">
+                  {a.syncMethod === "METAAPI" ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={syncing === a.id}
+                      onClick={() => {
+                        setSyncing(a.id);
+                        startTransition(async () => {
+                          const r = await syncAccountNow(a.id);
+                          setSyncing(null);
+                          if (r.ok) toast.success(r.message);
+                          else toast.error(r.message);
+                        });
+                      }}
+                    >
+                      <RefreshCw className={cn(syncing === a.id && "animate-spin")} /> Sync now
+                    </Button>
+                  ) : null}
+                  <ConnectDialog
+                    account={a}
+                    keys={keys}
+                    origin={origin}
+                    metaApi={metaApi}
+                    trigger={
+                      <Button size="sm" variant={a.syncMethod === "EA" || a.syncMethod === "METAAPI" ? "ghost" : "default"}>
+                        <Plug /> {a.syncMethod === "EA" || a.syncMethod === "METAAPI" ? "Sync settings" : "Connect auto-sync"}
+                      </Button>
+                    }
+                  />
+                </div>
               </Card>
             </motion.div>
           );

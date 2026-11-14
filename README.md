@@ -48,6 +48,21 @@ Next.js 16 · React 19 · Tailwind CSS v4 · Motion · Supabase Postgres · Driz
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:studio` | Open Drizzle Studio |
 
+## Auto-sync from Exness MT5
+
+Two ways, both feeding the same pipeline (deals are de-duplicated against imported history):
+
+- **MT5 Expert Advisor (free).** Accounts → *Connect auto-sync* → generate a sync key and download
+  `JournalSync.mq5` (source in `mql5/`, your app URL pre-filled). In MT5 add the app URL under
+  Tools → Options → Expert Advisors → *Allow WebRequest*, attach the EA to one chart and paste the key.
+  It sends 90 days of history, then every new deal within seconds, plus balance, equity and open
+  positions every minute. New logins are added as accounts automatically. It never trades.
+  Endpoint: `POST /api/sync/mt5` with `Authorization: Bearer <key>`.
+- **MetaApi cloud (paid, works with the PC off).** Set `METAAPI_TOKEN`, then connect an account with its
+  **investor (read-only) password** — it is passed to MetaApi once and not stored by Journal. Accounts
+  refresh every 5 minutes while the app is open, from *Sync now*, and in the daily cron. Uses the official
+  `metaapi.cloud-sdk`.
+
 ## Keyboard shortcuts
 
 `⌘K` / `Ctrl K` or `/` opens the command menu (search trades, jump anywhere, run actions).
