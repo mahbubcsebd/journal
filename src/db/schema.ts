@@ -446,8 +446,8 @@ export const goal = pgTable("goal", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   accountId: text("account_id").references(() => tradingAccount.id, { onDelete: "cascade" }),
-  period: text("period").notNull(), // DAY | WEEK | MONTH
-  metric: text("metric").notNull(), // NET_PNL | WIN_RATE | MAX_TRADES | MAX_LOSS
+  period: text("period").$type<"DAY" | "WEEK" | "MONTH">().notNull(),
+  metric: text("metric").$type<"NET_PNL" | "WIN_RATE" | "MAX_LOSS" | "MAX_TRADES" | "GREEN_DAYS">().notNull(),
   target: money("target").notNull(),
   active: boolean("active").notNull().default(true),
   ...timestamps,
@@ -466,6 +466,9 @@ export const challenge = pgTable("challenge", {
   profitTarget: money("profit_target").notNull(),
   maxDrawdown: money("max_drawdown").notNull(),
   maxDailyDrawdown: money("max_daily_drawdown"),
+  minTradingDays: integer("min_trading_days"),
+  /** Trailing: the floor rises with the highest balance reached. Static: fixed below the start balance. */
+  trailingDrawdown: boolean("trailing_drawdown").notNull().default(false),
   startDate: date("start_date", { mode: "string" }).notNull(),
   endDate: date("end_date", { mode: "string" }),
   ...timestamps,
