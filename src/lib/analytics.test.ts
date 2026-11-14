@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { durationBucket, groupBy, histogram, monthly, niceBin, performance, riskRatios, type ATrade } from "./analytics";
+import { disciplineScore, durationBucket, groupBy, tiltPatterns, histogram, monthly, niceBin, performance, riskRatios, type ATrade } from "./analytics";
 
 const t = (o: Partial<ATrade>): ATrade => ({
   id: Math.random().toString(),
@@ -16,11 +16,14 @@ const t = (o: Partial<ATrade>): ATrade => ({
   durationSec: 600,
   rMultiple: null,
   setup: null,
+  setupId: null,
   tags: [],
   emotionBefore: null,
   followedPlan: null,
   rating: null,
   accountName: "A",
+  openAt: 0,
+  closeAt: 0,
   ...o,
 });
 
@@ -64,5 +67,28 @@ describe("analytics", () => {
     expect(r.sharpe).toBeGreaterThan(0);
     expect(r.sortino).toBeGreaterThan(r.sharpe!);
     expect(Object.fromEntries(monthly(days))).toEqual({ "2026-10": 100, "2026-11": 100 });
+  });
+});
+
+describe("psychology", () => {
+  const m = 60_000;
+  it("detects revenge trades and size-ups after a loss", () => {
+    const ts = [
+      t({ id: "a", net: -50, volume: 0.1, openAt: 0, closeAt: 10 * m }),
+      t({ id: "b", net: -80, volume: 0.3, openAt: 15 * m, closeAt: 20 * m }), // revenge + sized up
+      t({ id: "c", net: 40, volume: 0.1, openAt: 25 * m, closeAt: 40 * m }), // revenge, after 2 losses
+      t({ id: "d", net: 30, volume: 0.1, openAt: 200 * m, closeAt: 210 * m }), // calm
+    ];
+    const r = tiltPatterns(ts);
+    expect(r.revenge.trades).toBe(2);
+    expect(r.revenge.net).toBe(-40);
+    expect(r.sizedUp.trades).toBe(1);
+    expect(r.afterStreak.trades).toBe(1);
+  });
+  it("scores discipline from the parts that have data", () => {
+    const ts = [t({ followedPlan: true, rMultiple: 1 }), t({ followedPlan: false, rMultiple: null })];
+    const d = disciplineScore(ts, 1, 2);
+    expect(d.score).toBe(50);
+    expect(disciplineScore([], 0, 0).score).toBeNull();
   });
 });

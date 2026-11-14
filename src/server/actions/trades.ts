@@ -1,12 +1,13 @@
 "use server";
 
 import { TZDate } from "@date-fns/tz";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { setup, tag, trade, tradeTag, tradingAccount } from "@/db/schema";
+import { setup, tag, trade, tradeImage, tradeTag, tradingAccount } from "@/db/schema";
+import { deleteObjects } from "@/lib/storage";
 import { computeRMultiple } from "@/lib/trading/metrics";
 import { normalizeSymbol } from "@/lib/trading/symbols";
 import { getCurrentUser } from "@/lib/session";
@@ -82,7 +83,9 @@ export async function saveTradeJournal(tradeId: string, input: JournalInput) {
 export async function deleteTrade(tradeId: string) {
   const u = await me();
   const t = await ownTrade(u.id, tradeId);
+  const images = await db.select({ url: tradeImage.url }).from(tradeImage).where(eq(tradeImage.tradeId, tradeId));
   await db.delete(trade).where(eq(trade.id, tradeId));
+  await deleteObjects(images.map((i) => i.url));
   await rebuildDailyStats(t.accountId);
   revalidatePath("/", "layout");
   redirect("/trades");
@@ -107,6 +110,12 @@ export async function createTag(input: { name: string; kind: "TAG" | "MISTAKE" |
 export async function createSetup(name: string) {
   const u = await me();
   const n = z.string().trim().min(1).max(60).parse(name);
+  const [existing] = await db
+    .select({ id: setup.id, name: setup.name })
+    .from(setup)
+    .where(and(eq(setup.userId, u.id), sql`lower(${setup.name}) = lower(${n})`))
+    .limit(1);
+  if (existing) return existing;
   const [row] = await db.insert(setup).values({ userId: u.id, name: n }).returning({ id: setup.id, name: setup.name });
   return row;
 }

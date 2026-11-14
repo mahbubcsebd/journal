@@ -31,6 +31,8 @@ type Props = {
   weekTrades: CalendarTrade[];
   timezone: string;
   hasAccounts: boolean;
+  /** day → mood (null when the entry has no mood) for days with a journal entry. */
+  journal: Record<string, number | null>;
 };
 
 const href = (view: CalendarView, d: string) => `/calendar?view=${view}&d=${d}`;
@@ -167,6 +169,7 @@ export function CalendarShell(props: Props) {
               weekStartsOn={weekStartsOn}
               byDay={byDay}
               currency={currency}
+              journal={props.journal}
               onSelect={setOpenDay}
             />
           )}

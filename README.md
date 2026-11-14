@@ -19,6 +19,10 @@ Next.js 16 · React 19 · Tailwind CSS v4 · Motion · Supabase Postgres · Driz
    - `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY` — `openssl rand -base64 32`
    - `SMTP_*`, `EMAIL_FROM` — for Gmail: `smtp.gmail.com`, port `465`, and a Google **App Password**
    - In development without SMTP, the OTP is printed in the terminal instead of emailed.
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` — trade screenshots.
+     Create a **private** bucket (default name `trade-images`) in Supabase → Storage. Images are only
+     served through `/api/trade-images/[id]` after an ownership check. Without these in development,
+     files are stored in `.uploads/`.
 3. **Database**
    ```bash
    npm run db:migrate

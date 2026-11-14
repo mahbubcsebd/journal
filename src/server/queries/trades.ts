@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, exists, gte, ilike, inArray, lt, lte, gt, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { setup, tag, trade, tradeTag, tradingAccount } from "@/db/schema";
+import { setup, tag, trade, tradeImage, tradeTag, tradingAccount } from "@/db/schema";
 import type { TradeFilters } from "@/lib/trade-filters";
 import { getReportingCurrency } from "./stats";
 
@@ -144,8 +144,15 @@ export async function getTrade(userId: string, id: string) {
     .where(and(eq(trade.id, id), eq(trade.userId, userId)))
     .limit(1);
   if (!row) return null;
-  const tags = await db.select({ id: tradeTag.tagId }).from(tradeTag).where(eq(tradeTag.tradeId, id));
-  return { ...row.trade, account: row.account, tagIds: tags.map((t) => t.id) };
+  const [tags, images] = await Promise.all([
+    db.select({ id: tradeTag.tagId }).from(tradeTag).where(eq(tradeTag.tradeId, id)),
+    db
+      .select({ id: tradeImage.id, caption: tradeImage.caption })
+      .from(tradeImage)
+      .where(eq(tradeImage.tradeId, id))
+      .orderBy(asc(tradeImage.createdAt)),
+  ]);
+  return { ...row.trade, account: row.account, tagIds: tags.map((t) => t.id), images };
 }
 
 /** Previous / next trade by close time across the selected accounts. */

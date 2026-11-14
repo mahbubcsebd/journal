@@ -13,6 +13,7 @@ import { getSelectedAccountIds, requireUser } from "@/lib/session";
 import { cn, formatDateTime, formatMoney, formatPrice } from "@/lib/utils";
 import { getFilterOptions, getNeighbours, getTrade } from "@/server/queries/trades";
 import { PriceLadder } from "./price-ladder";
+import { TradeImages } from "./trade-images";
 import { TradeJournal } from "./trade-journal";
 
 export const metadata: Metadata = { title: "Trade" };
@@ -130,6 +131,9 @@ async function TradeView({ params }: { params: PageProps<"/trades/[id]">["params
           </FadeIn>
           <FadeIn delay={0.1}>
             <PriceLadder side={t.side} entry={t.openPrice} exit={t.closePrice} sl={t.sl} tp={t.tp} />
+          </FadeIn>
+          <FadeIn delay={0.15}>
+            <TradeImages tradeId={t.id} initial={t.images} />
           </FadeIn>
         </div>
         <FadeIn delay={0.1}>

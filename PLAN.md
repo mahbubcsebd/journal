@@ -249,4 +249,5 @@ Protiti phase shesh e working demo + commit/push.
 - [ ] Phase 5 — MetaApi + EA auto-sync
 - [x] **Phase 6** — Analytics (overview with 20 stats + equity/drawdown + monthly returns; time: hour, weekday, session, hold time, month; instruments: symbol, side, account; setups, tags, mistakes, emotions, discipline, rating; risk: R and P&L distributions, hold-time scatter, lot size) and Reports (day/week/month/year/custom, comparison with the previous period, best/worst trades, breakdowns, CSV, print-to-PDF, share-card PNG with an option to hide amounts)
 - [ ] Phase 5 — MetaApi + MT5 EA auto-sync (needs a MetaApi token and an MT5 terminal to test)
-- [ ] Phase 7–10 — Journaling, goals, AI, launch
+- [x] **Phase 7** — Daily journal (bias, editable checklist, plan, went well / improve / lessons, mood, autosave, day stats alongside, calendar mood markers), notebook (folders, search, pin, templates, rich text), playbook (rules, entry checklist, per-setup stats and equity), psychology (discipline score, data-driven insights, tilt patterns, emotion / plan / mood vs results), trade screenshots (Supabase Storage, drag & drop or paste, captions, lightbox)
+- [ ] Phase 8–10 — Goals & risk tools, AI & extras, launch

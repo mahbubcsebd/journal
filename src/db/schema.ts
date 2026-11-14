@@ -55,6 +55,20 @@ export type UserSettings = {
   pnlDisplay?: "money" | "r" | "percent" | "pips";
   density?: "comfortable" | "compact";
   locale?: "en" | "bn";
+  /** Pre-market checklist items the user ticks every trading day. */
+  dailyChecklist?: string[];
+};
+
+export type JournalPremarket = {
+  bias?: "BULLISH" | "BEARISH" | "NEUTRAL" | null;
+  plan?: unknown; // Tiptap doc
+  checklist?: Record<string, boolean>;
+};
+
+export type JournalReview = {
+  wentWell?: unknown;
+  improve?: unknown;
+  lessons?: unknown;
 };
 
 export const session = pgTable(
@@ -405,8 +419,8 @@ export const journalEntry = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     day: date("day", { mode: "string" }).notNull(),
-    premarket: jsonb("premarket"),
-    review: jsonb("review"),
+    premarket: jsonb("premarket").$type<JournalPremarket>(),
+    review: jsonb("review").$type<JournalReview>(),
     mood: integer("mood"),
     lessons: text("lessons"),
     ...timestamps,

@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
+import { NotebookPen } from "lucide-react";
+import { moodEmoji } from "@/lib/journal";
 import { Card } from "@/components/ui/card";
 import { monthGrid, weekdayLabels, type WeekStart } from "@/lib/dates";
 import type { DailyPoint } from "@/lib/stats";
@@ -13,10 +15,11 @@ type Props = {
   weekStartsOn: WeekStart;
   byDay: Map<string, DailyPoint>;
   currency: string;
+  journal?: Record<string, number | null>;
   onSelect: (day: string) => void;
 };
 
-export function MonthView({ anchor, today, weekStartsOn, byDay, currency, onSelect }: Props) {
+export function MonthView({ anchor, today, weekStartsOn, byDay, currency, journal = {}, onSelect }: Props) {
   const weeks = monthGrid(anchor, weekStartsOn);
   const month = anchor.slice(0, 7);
   const maxAbs = Math.max(0, ...weeks.flat().map((d) => (d.startsWith(month) ? Math.abs(byDay.get(d)?.net ?? 0) : 0)));
@@ -59,8 +62,15 @@ export function MonthView({ anchor, today, weekStartsOn, byDay, currency, onSele
                   )}
                   style={p && !outside ? pnlFill(p.net, maxAbs) : p ? pnlFill(p.net, maxAbs, 0.5) : undefined}
                 >
-                  <span className={cn("text-[11px] font-medium tabular sm:text-xs", day === today ? "text-brand" : "text-muted-foreground")}>
-                    {Number(day.slice(8))}
+                  <span className="flex items-center justify-between">
+                    <span className={cn("text-[11px] font-medium tabular sm:text-xs", day === today ? "text-brand" : "text-muted-foreground")}>
+                      {Number(day.slice(8))}
+                    </span>
+                    {day in journal && (
+                      <span className="text-[11px] leading-none sm:text-xs" title="Journaled">
+                        {moodEmoji(journal[day]) ?? <NotebookPen className="size-3 text-muted-foreground" />}
+                      </span>
+                    )}
                   </span>
                   {p && (
                     <span className="mt-auto grid gap-0.5">

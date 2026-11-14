@@ -17,11 +17,14 @@ export type ATrade = {
   durationSec: number | null;
   rMultiple: number | null;
   setup: string | null;
+  setupId: string | null;
   tags: { name: string; kind: "TAG" | "MISTAKE" | "EMOTION" }[];
   emotionBefore: string | null;
   followedPlan: boolean | null;
   rating: number | null;
   accountName: string;
+  openAt: number; // epoch ms
+  closeAt: number; // epoch ms
 };
 
 export type GroupRow = {
@@ -198,4 +201,71 @@ export function monthly(days: DayPnl[]) {
   const map = new Map<string, number>();
   for (const d of days) map.set(d.day.slice(0, 7), r2((map.get(d.day.slice(0, 7)) ?? 0) + d.net));
   return map;
+}
+
+/* ───────────────────────────── Psychology ───────────────────────────── */
+
+const REVENGE_WINDOW_MS = 30 * 60_000;
+
+/**
+ * Behaviour patterns that usually signal tilt:
+ * - revenge trades: opened within 30 minutes of closing a loser
+ * - size-ups after a loss: that revenge trade is bigger than the losing one
+ * - overtrading days: more than twice the median number of trades
+ * - trades taken after two or more consecutive losses
+ */
+export function tiltPatterns(ts: ATrade[]) {
+  const byOpen = [...ts].sort((a, b) => a.openAt - b.openAt);
+  const byClose = [...ts].sort((a, b) => a.closeAt - b.closeAt);
+  const revenge: ATrade[] = [];
+  const sizedUp: ATrade[] = [];
+  for (const t of byOpen) {
+    const prevLoss = [...byClose].reverse().find((p) => p.id !== t.id && p.closeAt <= t.openAt);
+    if (prevLoss && prevLoss.net < 0 && t.openAt - prevLoss.closeAt <= REVENGE_WINDOW_MS) {
+      revenge.push(t);
+      if (t.volume > prevLoss.volume * 1.2) sizedUp.push(t);
+    }
+  }
+
+  const perDay = new Map<string, ATrade[]>();
+  for (const t of ts) perDay.set(t.day, [...(perDay.get(t.day) ?? []), t]);
+  const counts = [...perDay.values()].map((l) => l.length).sort((a, b) => a - b);
+  const median = counts.length ? counts[Math.floor((counts.length - 1) / 2)] : 0;
+  const overDays = [...perDay].filter(([, l]) => median > 0 && l.length > median * 2);
+
+  const afterStreak: ATrade[] = [];
+  let losses = 0;
+  for (const t of byClose) {
+    if (losses >= 2) afterStreak.push(t);
+    losses = t.net < 0 ? losses + 1 : t.net > 0 ? 0 : losses;
+  }
+
+  return {
+    revenge: summarize("Revenge trades", revenge),
+    sizedUp: summarize("Bigger size after a loss", sizedUp),
+    afterStreak: summarize("After 2+ losses in a row", afterStreak),
+    overtrading: {
+      medianTradesPerDay: median,
+      days: overDays.length,
+      ...summarize("Overtrading days", overDays.flatMap(([, l]) => l)),
+    },
+    baseline: summarize("All trades", ts),
+  };
+}
+
+/** 0–100 from plan adherence, stop-loss usage and journaling consistency (each weighted). */
+export function disciplineScore(ts: ATrade[], journaledTradingDays: number, tradingDays: number) {
+  const recorded = ts.filter((t) => t.followedPlan != null);
+  const plan = recorded.length ? recorded.filter((t) => t.followedPlan).length / recorded.length : null;
+  const stops = ts.length ? ts.filter((t) => t.rMultiple != null).length / ts.length : null;
+  const journal = tradingDays ? journaledTradingDays / tradingDays : null;
+  const parts = [
+    { key: "Followed plan", value: plan, weight: 0.4 },
+    { key: "Used a stop loss", value: stops, weight: 0.3 },
+    { key: "Journaled trading days", value: journal, weight: 0.3 },
+  ];
+  const usable = parts.filter((p) => p.value != null);
+  const totalWeight = usable.reduce((s, p) => s + p.weight, 0);
+  const score = totalWeight ? Math.round((usable.reduce((s, p) => s + p.value! * p.weight, 0) / totalWeight) * 100) : null;
+  return { score, parts };
 }

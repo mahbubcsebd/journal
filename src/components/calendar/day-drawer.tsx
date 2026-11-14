@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUpRight, Loader2, X } from "lucide-react";
+import { ArrowUpRight, Loader2, NotebookPen, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useEffectEvent, useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -60,6 +60,11 @@ export function DayDrawer({ day, onClose }: { day: string | null; onClose: () =>
                 <h2 className="text-lg font-semibold tracking-tight">{formatDay(day, { month: "long", day: "numeric", year: "numeric" })}</h2>
               </div>
               <div className="flex items-center gap-1">
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/journal/${day}`}>
+                    <NotebookPen /> Journal
+                  </Link>
+                </Button>
                 <Button asChild variant="outline" size="sm">
                   <Link href={`/calendar/${day}`}>
                     Open day <ArrowUpRight />

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, NotebookPen } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -39,6 +39,11 @@ async function Day({ params }: { params: PageProps<"/calendar/[date]">["params"]
         description="Every trade closed on this day, in your timezone."
         actions={
           <>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/journal/${date}`}>
+                <NotebookPen /> Journal this day
+              </Link>
+            </Button>
             <Button asChild variant="outline" size="icon" aria-label="Previous day">
               <Link href={`/calendar/${addDays(date, -1)}`}>
                 <ChevronLeft />

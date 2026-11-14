@@ -12,6 +12,7 @@ export async function getAnalyticsTrades(
   from: string | undefined,
   to: string | undefined,
   tz: string,
+  opts: { setupId?: string } = {},
 ): Promise<{ currency: string; trades: ATrade[] }> {
   const currency = await getReportingCurrency(accountIds);
   if (accountIds.length === 0) return { currency, trades: [] };
@@ -34,10 +35,13 @@ export async function getAnalyticsTrades(
       durationSec: trade.durationSec,
       rMultiple: trade.rMultiple,
       setup: setup.name,
+      setupId: trade.setupId,
       emotionBefore: trade.emotionBefore,
       followedPlan: trade.followedPlan,
       rating: trade.rating,
       accountName: tradingAccount.nickname,
+      openTime: trade.openTime,
+      closeTime: trade.closeTime,
     })
     .from(trade)
     .innerJoin(tradingAccount, eq(tradingAccount.id, trade.accountId))
@@ -50,6 +54,7 @@ export async function getAnalyticsTrades(
         eq(trade.isBacktest, false),
         from ? sql`${closeDay} >= ${from}::date` : undefined,
         to ? sql`${closeDay} <= ${to}::date` : undefined,
+        opts.setupId ? eq(trade.setupId, opts.setupId) : undefined,
       ),
     )
     .orderBy(asc(trade.closeTime));
@@ -66,8 +71,10 @@ export async function getAnalyticsTrades(
 
   return {
     currency,
-    trades: rows.map((r) => ({
+    trades: rows.map(({ openTime, closeTime, ...r }) => ({
       ...r,
+      openAt: openTime.getTime(),
+      closeAt: (closeTime ?? openTime).getTime(),
       net: Math.round(Number(r.net) * 100) / 100,
       commission: Number(r.commission),
       swap: Number(r.swap),
