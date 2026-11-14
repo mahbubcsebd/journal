@@ -20,10 +20,15 @@
   --accent: oklch(0.955 0.004 260);
   --brand: oklch(0.64 0.15 162);
   --brand-soft: oklch(0.95 0.04 162);
-  --profit: oklch(0.6 0.15 155);
-  --profit-soft: oklch(0.94 0.05 155);
-  --loss: oklch(0.6 0.2 18);
-  --loss-soft: oklch(0.95 0.035 18);
+  /* Profit/loss: teal-green vs coral, separated by lightness so the pair stays
+     distinguishable with red-green colour blindness (validated with the dataviz
+     palette validator). Text tokens are darker for 4.5:1 contrast. */
+  --profit: oklch(0.5 0.12 172);
+  --profit-soft: oklch(0.95 0.035 172);
+  --loss: oklch(0.56 0.19 32);
+  --loss-soft: oklch(0.95 0.035 35);
+  --chart-up: oklch(0.52 0.12 175);
+  --chart-down: oklch(0.7 0.17 35);
   --warning: oklch(0.75 0.15 75);
   --sidebar: oklch(0.975 0.003 260);
   --shadow-color: 220 15% 20%;
@@ -48,10 +53,12 @@
   --accent: oklch(0.24 0.009 265);
   --brand: oklch(0.72 0.15 162);
   --brand-soft: oklch(0.3 0.06 162);
-  --profit: oklch(0.72 0.16 155);
-  --profit-soft: oklch(0.3 0.07 155);
-  --loss: oklch(0.68 0.19 18);
-  --loss-soft: oklch(0.3 0.08 18);
+  --profit: oklch(0.76 0.12 168);
+  --profit-soft: oklch(0.3 0.06 168);
+  --loss: oklch(0.73 0.15 38);
+  --loss-soft: oklch(0.3 0.07 35);
+  --chart-up: oklch(0.49 0.115 168);
+  --chart-down: oklch(0.665 0.165 40);
   --warning: oklch(0.8 0.14 75);
   --sidebar: oklch(0.16 0.007 265);
   --shadow-color: 0 0% 0%;
@@ -79,6 +86,8 @@
   --color-profit-soft: var(--profit-soft);
   --color-loss: var(--loss);
   --color-loss-soft: var(--loss-soft);
+  --color-chart-up: var(--chart-up);
+  --color-chart-down: var(--chart-down);
   --color-warning: var(--warning);
   --color-sidebar: var(--sidebar);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;

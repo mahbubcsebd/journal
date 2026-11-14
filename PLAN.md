@@ -245,6 +245,6 @@ Protiti phase shesh e working demo + commit/push.
 - [x] Multi-account foundation — accounts CRUD, global account switcher, USC/USD-safe aggregation
 - [x] **Phase 2** — Trades table (filters, sort, pagination, summary, CSV export), trade detail (risk map, journal: rating, setup, emotions, plan, mistakes, tags, notes, initial SL → R), manual/backtest entry, tags & mistakes board with P&L per tag
 - [x] **Phase 3** — Import: MT5 report (.html UTF-16 / .xlsx), Exness Personal Area CSV, generic CSV; account auto-detect (creates the sub-account if new), preview, idempotent re-import, deposits/withdrawals, daily stats rebuild
-- [ ] Phase 4 — Calendar + full dashboard
+- [x] **Phase 4** — Calendar (month with weekly totals, week, year heatmap, day drawer + day page with intraday P&L, keyboard nav, week-start setting) and dashboard (range tabs, 8 KPIs, equity + drawdown, daily P&L bars, mini month, recent trades, symbols, long vs short). Profit/loss colours validated for colour-blind readers
 - [ ] Phase 5 — MetaApi + EA auto-sync
 - [ ] Phase 6–10 — Analytics, journaling, goals, AI, launch

@@ -26,6 +26,7 @@ async function Settings() {
       name={user.name}
       timezone={user.timezone}
       baseCurrency={user.baseCurrency}
+      weekStartsOn={user.settings.weekStartsOn ?? 1}
     />
   );
 }

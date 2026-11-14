@@ -54,3 +54,12 @@ export function formatPrice(n: number | null | undefined) {
   const digits = Math.abs(n) >= 1000 ? 2 : Math.abs(n) >= 10 ? 3 : 5;
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: digits });
 }
+
+/** Very short signed amount for tight spaces: "+130", "-1.2K". Currency is implied by context. */
+export function formatTiny(value: number) {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  const a = Math.abs(value);
+  const body =
+    a >= 1_000_000 ? `${(a / 1_000_000).toFixed(1)}M` : a >= 1000 ? `${(a / 1000).toFixed(a >= 10_000 ? 0 : 1)}K` : `${Math.round(a)}`;
+  return sign + body;
+}

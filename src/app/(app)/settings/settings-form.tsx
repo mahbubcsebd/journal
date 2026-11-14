@@ -14,7 +14,13 @@ import { saveProfile, type ProfileState } from "@/server/actions/profile";
 
 const noop = () => () => {};
 
-export function SettingsForm(props: { email: string; name: string; timezone: string; baseCurrency: string }) {
+export function SettingsForm(props: {
+  email: string;
+  name: string;
+  timezone: string;
+  baseCurrency: string;
+  weekStartsOn: number;
+}) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(saveProfile, {});
   const zones = COMMON_TIMEZONES.includes(props.timezone) ? COMMON_TIMEZONES : [props.timezone, ...COMMON_TIMEZONES];
 
@@ -52,6 +58,13 @@ export function SettingsForm(props: { email: string; name: string; timezone: str
                 </Select>
               </Field>
             </div>
+            <Field label="Week starts on" htmlFor="weekStartsOn" hint="Used by the calendar and weekly reports.">
+              <Select id="weekStartsOn" name="weekStartsOn" defaultValue={String(props.weekStartsOn)} className="sm:w-1/2">
+                <option value="1">Monday</option>
+                <option value="0">Sunday</option>
+                <option value="6">Saturday</option>
+              </Select>
+            </Field>
             <Button type="submit" disabled={pending} className="w-fit">
               {pending && <Loader2 className="animate-spin" />}
               Save changes
