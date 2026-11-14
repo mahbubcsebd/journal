@@ -14,6 +14,15 @@ const LOCAL_DIR = path.join(process.cwd(), ".uploads");
 
 const useSupabase = Boolean(SUPABASE_URL && SERVICE_KEY);
 
+/**
+ * New Supabase secret keys (`sb_secret_…`) aren't JWTs: they go in the `apikey`
+ * header only. Legacy `service_role` keys are JWTs and also need `Authorization`.
+ */
+function authHeaders(): Record<string, string> {
+  const key = SERVICE_KEY ?? "";
+  return key.startsWith("eyJ") ? { apikey: key, Authorization: `Bearer ${key}` } : { apikey: key };
+}
+
 function assertConfigured() {
   if (!useSupabase && process.env.NODE_ENV === "production") {
     throw new Error("File storage is not configured (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)");
@@ -31,7 +40,7 @@ export async function putObject(key: string, data: Uint8Array, contentType: stri
   if (useSupabase) {
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${key}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${SERVICE_KEY}`, "content-type": contentType, "x-upsert": "true" },
+      headers: { ...authHeaders(), "content-type": contentType, "x-upsert": "true" },
       body: Buffer.from(data),
     });
     if (!res.ok) throw new Error(`Upload failed (${res.status})`);
@@ -45,7 +54,7 @@ export async function putObject(key: string, data: Uint8Array, contentType: stri
 export async function getObject(key: string): Promise<Uint8Array | null> {
   if (useSupabase) {
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/authenticated/${BUCKET}/${key}`, {
-      headers: { Authorization: `Bearer ${SERVICE_KEY}` },
+      headers: authHeaders(),
     });
     if (!res.ok) return null;
     return new Uint8Array(await res.arrayBuffer());
@@ -62,7 +71,7 @@ export async function deleteObjects(keys: string[]) {
   if (useSupabase) {
     await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" },
+      headers: { ...authHeaders(), "content-type": "application/json" },
       body: JSON.stringify({ prefixes: keys }),
     });
     return;
