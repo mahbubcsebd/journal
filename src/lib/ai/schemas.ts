@@ -1,25 +1,31 @@
 import { z } from "zod";
 
-const item = z.object({ title: z.string().min(1).max(200), detail: z.string().min(1).max(1200) });
+// Lenient: an answer that runs a little long (common in Bengali) is trimmed,
+// not rejected. Only missing content fails validation.
+const text = (max: number) => z.string().trim().min(1).transform((s) => (s.length > max ? `${s.slice(0, max - 1)}…` : s));
+const optText = (max: number) => z.string().trim().default("").transform((s) => s.slice(0, max));
+const list = <T extends z.ZodTypeAny>(of: T, max: number) => z.array(of).default([]).transform((a) => a.slice(0, max));
+
+const item = z.object({ title: text(200), detail: text(1200) });
 
 export const reviewSchema = z.object({
-  headline: z.string().min(1).max(200),
-  grade: z.enum(["A", "B", "C", "D", "F"]),
-  summary: z.string().min(1).max(2000),
-  strengths: z.array(item).max(6),
-  weaknesses: z.array(item).max(6),
-  patterns: z.array(item.extend({ evidence: z.string().max(600).default("") })).max(8),
-  actions: z.array(item).min(1).max(5),
+  headline: text(200),
+  grade: z.string().trim().transform((g) => (["A", "B", "C", "D", "F"].includes(g[0]?.toUpperCase()) ? g[0].toUpperCase() : "C") as "A" | "B" | "C" | "D" | "F"),
+  summary: text(2000),
+  strengths: list(item, 6),
+  weaknesses: list(item, 6),
+  patterns: list(item.extend({ evidence: optText(600) }), 8),
+  actions: z.array(item).min(1).transform((a) => a.slice(0, 5)),
 });
 export type Review = z.infer<typeof reviewSchema>;
 
 export const tradeFeedbackSchema = z.object({
-  verdict: z.string().min(1).max(300),
-  score: z.number().int().min(1).max(10),
-  wentWell: z.array(z.string().max(400)).max(5),
-  improve: z.array(z.string().max(400)).max(5),
-  ruleCheck: z.string().max(800).default(""),
-  nextTime: z.string().min(1).max(600),
+  verdict: text(300),
+  score: z.coerce.number().transform((n) => Math.min(10, Math.max(1, Math.round(n)))),
+  wentWell: list(optText(400), 5),
+  improve: list(optText(400), 5),
+  ruleCheck: optText(800),
+  nextTime: text(600),
 });
 export type TradeFeedback = z.infer<typeof tradeFeedbackSchema>;
 

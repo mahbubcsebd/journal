@@ -54,6 +54,21 @@ describe("buildReviewContext", () => {
 });
 
 describe("generateJson", () => {
+  it("falls back to a current model when the configured one is retired, and trims long answers", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "k");
+    vi.stubEnv("GEMINI_MODEL", "gemini-1.0-pro");
+    const long = { ...{ headline: "h".repeat(500), grade: "b+", summary: "s", strengths: [], weaknesses: [], patterns: [], actions: [{ title: "t", detail: "d" }] } };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: "models/gemini-1.0-pro is not found" } }), { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(long) }] } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const out = await generateJson({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema });
+    expect(String(fetch.mock.calls[1][0])).toContain("gemini-flash-latest");
+    expect(out.headline.length).toBe(200);
+    expect(out.grade).toBe("B");
+  });
+
   const review = {
     headline: "Solid week",
     grade: "B",
@@ -90,6 +105,8 @@ describe("generateJson", () => {
     await expect(generateJson({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema })).rejects.toMatchObject({ code: "RATE_LIMITED" });
     vi.stubGlobal("fetch", reply(400, { error: { message: "API key not valid" } }));
     await expect(generateJson({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema })).rejects.toMatchObject({ code: "BAD_KEY" });
+    vi.stubGlobal("fetch", reply(403, { error: { message: "API key expired. Please renew the API key." } }));
+    await expect(generateJson({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema })).rejects.toThrow(/API key expired/);
     vi.stubGlobal("fetch", reply(200, { candidates: [{ content: { parts: [{ text: '{"headline":"x"}' }] } }] }));
     await expect(generateJson({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema })).rejects.toBeInstanceOf(AiError);
   });
