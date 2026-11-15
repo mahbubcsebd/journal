@@ -1,8 +1,8 @@
+import { connection } from "next/server";
 import postgres from "postgres";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 
-export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const PROBE_TIMEOUT_MS = 8000;
@@ -34,6 +34,7 @@ async function probe(label: string, run: () => Promise<unknown>): Promise<Probe>
  * Returns timings only — no data — so it is safe to leave public.
  */
 export async function GET() {
+  await connection(); // always run at request time, never prerendered
   const fresh = postgres(process.env.DATABASE_URL!, { prepare: false, max: 1, connect_timeout: 8, idle_timeout: 1 });
   const freshConnection = await probe("fresh connection", () => fresh`select 1`);
   await fresh.end({ timeout: 1 }).catch(() => undefined);
