@@ -4,7 +4,7 @@
 //| your Journal app. Read-only: it never places or changes trades.  |
 //+------------------------------------------------------------------+
 #property copyright   "Journal"
-#property version     "1.03"
+#property version     "1.04"
 #property description "Auto-sync your Exness MT5 trades to Journal."
 #property description "1) Tools → Options → Expert Advisors → tick 'Allow WebRequest for listed URL' and add your Journal URL."
 #property description "2) Paste your sync key below. Attach to any one chart per account."
@@ -209,8 +209,22 @@ bool Post(string dealsJson)
    return true;
   }
 
+// True when MT5 is actually logged in to the trade account. A saved login whose
+// password is wrong (or changed) still shows its number, but has no currency,
+// no Trade/History tabs and no deal history.
+bool LoggedIn()
+  {
+   return TerminalInfoInteger(TERMINAL_CONNECTED) && AccountInfoString(ACCOUNT_CURRENCY) != "" && AccountInfoInteger(ACCOUNT_LOGIN) > 0;
+  }
+
 void SyncNow()
   {
+   if(!LoggedIn())
+     {
+      g_status = "MT5 is not logged in to account " + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) +
+                 ". File > Login to Trade Account: enter the trading password and server (see the Journal tab for the reason)";
+      return;
+     }
    if(!g_reachable)
      {
       g_lastAttempt = TimeLocal();
