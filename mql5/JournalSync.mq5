@@ -4,7 +4,7 @@
 //| your Journal app. Read-only: it never places or changes trades.  |
 //+------------------------------------------------------------------+
 #property copyright   "Journal"
-#property version     "1.02"
+#property version     "1.03"
 #property description "Auto-sync your Exness MT5 trades to Journal."
 #property description "1) Tools → Options → Expert Advisors → tick 'Allow WebRequest for listed URL' and add your Journal URL."
 #property description "2) Paste your sync key below. Attach to any one chart per account."
@@ -27,6 +27,7 @@ int      g_failures     = 0;
 string   g_status       = "starting";
 
 bool     g_reachable    = false;  // connection test passed
+int      g_totalSent    = 0;      // deals sent since the EA started
 
 string GvName() { return "JournalSync_" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)); }
 
@@ -251,7 +252,9 @@ void SyncNow()
    g_pending = false;
    g_syncedUntil = newest;
    GlobalVariableSet(GvName(), (double)g_syncedUntil);
-   g_status = StringFormat("synced %s · %d deals checked", TimeToString(TimeLocal(), TIME_MINUTES), sent);
+   g_totalSent += sent;
+   g_status = StringFormat("synced %s · %d deals sent since start (%d new) · history from %s",
+                           TimeToString(TimeLocal(), TIME_MINUTES), g_totalSent, sent, TimeToString(from, TIME_DATE));
   }
 
 int OnInit()

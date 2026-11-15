@@ -89,8 +89,13 @@ export async function POST(request: Request) {
         .where(and(eq(tradingAccount.userId, key.userId), eq(tradingAccount.login, p.login), eq(tradingAccount.server, p.server)))
         .limit(1)
     )[0];
-  } else if (account.syncMethod === "MANUAL" || account.syncMethod === "IMPORT") {
-    await db.update(tradingAccount).set({ syncMethod: "EA" }).where(eq(tradingAccount.id, account.id));
+  } else {
+    // MT5 knows whether the login is real or demo; trust it over what was typed.
+    const environment = p.trade_mode === undefined ? account.environment : p.trade_mode === 0 ? "DEMO" : "REAL";
+    const syncMethod = account.syncMethod === "MANUAL" || account.syncMethod === "IMPORT" ? "EA" : account.syncMethod;
+    if (environment !== account.environment || syncMethod !== account.syncMethod) {
+      await db.update(tradingAccount).set({ environment, syncMethod }).where(eq(tradingAccount.id, account.id));
+    }
   }
   if (account.archived) return json(409, { error: "This account is archived in Journal" });
 
