@@ -50,9 +50,11 @@ describe("EA payload", () => {
   it("rejects malformed payloads", () => {
     expect(eaPayloadSchema.safeParse({ ...payload, login: "abc" }).success).toBe(false);
     expect(eaPayloadSchema.safeParse({ ...payload, deals: [{ ticket: 1 }] }).success).toBe(false);
-    const bad = parseEaPayload({ ...payload, currency: undefined });
+    const bad = parseEaPayload({ ...payload, server: "" });
     expect(bad).toMatchObject({ ok: false });
-    expect(!bad.ok && bad.error).toMatch(/^currency: /);
+    expect(!bad.ok && bad.error).toMatch(/^server: /);
+    const noCurrency = parseEaPayload({ ...payload, currency: "" });
+    expect(noCurrency.ok && noCurrency.data.currency).toBe("");
   });
   it("skips a broken deal instead of rejecting the whole sync", () => {
     const r = parseEaPayload({ ...payload, deals: [...payload.deals, { ticket: 1 }, { ...payload.deals[0], ticket: 9002, time: "1793866600", volume: "0.10" }] });

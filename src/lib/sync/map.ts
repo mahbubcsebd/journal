@@ -140,7 +140,9 @@ export const eaPayloadSchema = z.object({
   login: id.pipe(z.string().trim().regex(/^\d{3,20}$/)),
   server: z.string().trim().min(1).max(120),
   company: z.string().optional(),
-  currency: z.string().trim().min(2).max(8),
+  // MT5 can report an empty currency right after start-up or while the market
+  // is closed; the route falls back to the account's known currency.
+  currency: z.string().trim().max(8).optional().default("").transform((c) => c.toUpperCase()),
   balance: num,
   equity: num,
   leverage: int.optional(),

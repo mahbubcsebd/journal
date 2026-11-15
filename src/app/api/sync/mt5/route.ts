@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     }
   }
   if (!account) {
-    const cent = p.currency.toUpperCase() === "USC";
+    const cent = p.currency === "USC";
     [account] = await db
       .insert(tradingAccount)
       .values({
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         login: p.login,
         server: p.server,
         nickname: `${cent ? "Cent" : "MT5"} #${p.login}`,
-        currency: p.currency.toUpperCase(),
+        currency: p.currency || "USD",
         accountType: cent ? "Standard Cent" : "Standard",
         environment: p.trade_mode === 0 ? "DEMO" : "REAL",
         syncMethod: "EA",
@@ -103,7 +103,8 @@ export async function POST(request: Request) {
       balance: p.balance,
       equity: p.equity,
       leverage: p.leverage,
-      currency: p.currency.toUpperCase(),
+      // Empty when MT5 hasn't loaded it yet: keep what the account already has.
+      currency: p.currency || null,
       openPositions: p.positions.map(fromEaPosition),
     },
   });
