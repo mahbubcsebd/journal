@@ -259,8 +259,7 @@ export function CommandMenu({ accounts, today }: { accounts: Account[]; today: s
                     onSelect={() =>
                       run(async () => {
                         await signOut();
-                        router.replace("/login");
-                        router.refresh();
+                        window.location.replace("/login");
                       })
                     }
                     className={item}

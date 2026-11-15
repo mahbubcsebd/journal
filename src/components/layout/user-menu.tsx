@@ -2,7 +2,6 @@
 
 import { LogOut, Settings, Wallet } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +14,6 @@ import { signOut } from "@/lib/auth-client";
 import { initials } from "@/lib/utils";
 
 export function UserMenu({ name, email }: { name: string; email: string }) {
-  const router = useRouter();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -40,8 +38,8 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
         <DropdownMenuItem
           onSelect={async () => {
             await signOut();
-            router.replace("/login");
-            router.refresh();
+            // Full page load so nothing from this session stays in the client cache.
+            window.location.replace("/login");
           }}
         >
           <LogOut /> Sign out

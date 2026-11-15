@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Loader2, Mail } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -14,7 +14,6 @@ const RESEND_SECONDS = 30;
 
 
 export function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
@@ -67,9 +66,9 @@ export function LoginForm() {
       );
       return;
     }
-    const next = params.get("next");
-    router.replace(safeNext(next));
-    router.refresh();
+    // Full page load: start the new session with no client cache or page state
+    // left over from a previous user in this browser.
+    window.location.replace(safeNext(params.get("next")));
   }
 
   return (
