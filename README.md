@@ -51,7 +51,7 @@ Next.js 16 · React 19 · Tailwind CSS v4 · Motion · Supabase Postgres · Driz
 
 ## Auto-sync from Exness MT5
 
-Beginner step-by-step guide (Banglish, every menu and folder name): [docs/MT5-SETUP-GUIDE.md](docs/MT5-SETUP-GUIDE.md),
+Beginner step-by-step guide (every MT5 menu and folder name): [docs/MT5-SETUP-GUIDE.md](docs/MT5-SETUP-GUIDE.md),
 also served in the app at `/guide/mt5` (public, shareable).
 
 Two ways, both feeding the same pipeline (deals are de-duplicated against imported history):

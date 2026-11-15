@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ATrade } from "../analytics";
 import { buildReviewContext } from "./context";
-import { AiError, generateJson } from "./gemini";
+import { AiError, generateJson, generateJsonWithMeta } from "./gemini";
 import { reviewResponseSchema, reviewSchema } from "./schemas";
 
 const t = (o: Partial<ATrade>): ATrade => ({
@@ -54,6 +54,18 @@ describe("buildReviewContext", () => {
 });
 
 describe("generateJson", () => {
+  it("falls back to Vertex AI when the Gemini API refuses the key", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "AQ.test");
+    const ok = { headline: "h", grade: "A", summary: "s", strengths: [], weaknesses: [], patterns: [], actions: [{ title: "t", detail: "d" }] };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: "API key not valid." } }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(ok) }] } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const r = await generateJsonWithMeta({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema });
+    expect(r.endpoint).toBe("vertex-ai");
+    expect(String(fetch.mock.calls[1][0])).toContain("aiplatform.googleapis.com");
+  });
   it("falls back to a current model when the configured one is retired, and trims long answers", async () => {
     vi.stubEnv("GEMINI_API_KEY", "k");
     vi.stubEnv("GEMINI_MODEL", "gemini-1.0-pro");

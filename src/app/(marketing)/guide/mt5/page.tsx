@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "MT5 auto-sync setup guide",
-  description: "Step by step: connect your Exness MT5 account to Journal with the JournalSync EA, so every trade is saved automatically.",
+  title: "Connect MetaTrader 5",
+  description: "Step by step: put the JournalSync EA in MetaTrader 5 and sync every Exness trade to Journal automatically.",
 };
 
-const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://<tomar-app>.vercel.app").replace(/\/$/, "");
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://your-app.vercel.app").replace(/\/$/, "");
 
 /* ───────────────────────────── small building blocks ───────────────────────────── */
 
@@ -70,21 +70,22 @@ function Step({ n, id, title, time, children }: { n: number; id: string; title: 
 }
 
 const STEPS = [
-  { id: "need", title: "Ki ki lagbe" },
-  { id: "journal", title: "Journal e account khulun" },
-  { id: "exness", title: "Exness theke account er tottho nin" },
-  { id: "install", title: "PC te MT5 install korun" },
-  { id: "login", title: "MT5 e account e login korun" },
-  { id: "key", title: "Sync key ar EA file nin" },
-  { id: "folder", title: "EA file ta Experts folder e rakhun" },
-  { id: "compile", title: "EA compile korun" },
-  { id: "webrequest", title: "MT5 ke internet e pathanor onumoti din" },
-  { id: "attach", title: "EA chart e lagan" },
-  { id: "check", title: "Kaj korche kina dekhun" },
-  { id: "daily", title: "Protidin er babohar" },
-  { id: "more", title: "Aro account / onno user" },
-  { id: "history", title: "Purono history abar pathano" },
-  { id: "trouble", title: "Shomossa hole" },
+  { id: "login", title: "Log in to your trading account" },
+  { id: "key", title: "Get your sync key and the EA file" },
+  { id: "folder", title: "Put the file in the Experts folder" },
+  { id: "compile", title: "Compile the EA" },
+  { id: "webrequest", title: "Allow MT5 to reach Journal" },
+  { id: "attach", title: "Attach the EA and paste your key" },
+  { id: "check", title: "Check that it syncs" },
+  { id: "more", title: "Sync another account" },
+  { id: "history", title: "Send older history again" },
+  { id: "trouble", title: "Troubleshooting" },
+];
+
+const AT_A_GLANCE: { what: string; where: React.ReactNode }[] = [
+  { what: "JournalSync.mq5", where: <Path items={["File", "Open Data Folder", "MQL5", "Experts"]} /> },
+  { what: "Your Journal address", where: <Path items={["Tools", "Options", "Expert Advisors", "Allow WebRequest"]} /> },
+  { what: "Your sync key", where: <Path items={["JournalSync on a chart", "Inputs", "Sync key"]} /> },
 ];
 
 /* ───────────────────────────────────── page ───────────────────────────────────── */
@@ -108,10 +109,10 @@ export default function Mt5GuidePage() {
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:py-14">
         <aside className="hidden lg:block">
           <nav aria-label="Steps" className="sticky top-24 grid gap-0.5 text-sm">
-            <p className="mb-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Steps</p>
+            <p className="mb-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">On this page</p>
             {STEPS.map((s, i) => (
               <a key={s.id} href={`#${s.id}`} className="flex gap-2 rounded-md px-2 py-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground">
-                <span className="w-4 shrink-0 text-right font-mono text-xs leading-5 tabular">{i}</span>
+                <span className="w-4 shrink-0 text-right font-mono text-xs leading-5 tabular">{i < 7 ? i + 1 : "·"}</span>
                 <span className="leading-5">{s.title}</span>
               </a>
             ))}
@@ -122,20 +123,33 @@ export default function Mt5GuidePage() {
           <Link href="/accounts" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-4" /> Accounts
           </Link>
-          <p className="text-sm font-medium text-brand-ink">Setup guide · 15–20 minute</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">Exness MT5 ke Journal er sathe connect korun</h1>
+          <p className="text-sm font-medium text-brand-ink">Setup guide · about 10 minutes</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">Connect MetaTrader 5 to Journal</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-            Ei guide follow korle apnar Exness account e je kono jaygay (Exness website, Exness app ba MT5) theke deya protiti order nijei Journal e save
-            hobe. Kono step skip korben na, order moto korun. Protiti menu er naam thik jemon MT5 e lekha thake temon-i deya ache.
+            The JournalSync Expert Advisor runs inside MetaTrader 5 on your computer and sends every deal, your balance and open positions to Journal.
+            It only reads your account — it never places or changes a trade. Follow the steps in order; every menu name is written exactly as it
+            appears in MT5.
           </p>
 
+          <div className="mt-8 overflow-hidden rounded-xl border bg-card shadow-soft">
+            <p className="border-b bg-muted/40 px-4 py-2.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">At a glance: what goes where</p>
+            <dl className="divide-y">
+              {AT_A_GLANCE.map((r) => (
+                <div key={r.what} className="grid gap-1.5 px-4 py-3 sm:grid-cols-[180px_1fr] sm:items-center">
+                  <dt className="font-mono text-[13px] font-medium">{r.what}</dt>
+                  <dd>{r.where}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
           <div className="mt-6 grid gap-2 rounded-xl border bg-card p-4 text-sm shadow-soft lg:hidden">
-            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Steps</p>
+            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">On this page</p>
             <ol className="grid gap-1 sm:grid-cols-2">
               {STEPS.map((s, i) => (
                 <li key={s.id}>
                   <a href={`#${s.id}`} className="flex gap-2 text-muted-foreground hover:text-foreground">
-                    <span className="w-4 text-right font-mono text-xs leading-5 tabular">{i}</span>
+                    <span className="w-4 text-right font-mono text-xs leading-5 tabular">{i < 7 ? i + 1 : "·"}</span>
                     <span className="leading-5">{s.title}</span>
                   </a>
                 </li>
@@ -143,334 +157,224 @@ export default function Mt5GuidePage() {
             </ol>
           </div>
 
-          <div className="mt-10">
-            <Step n={0} id="need" title="Ki ki lagbe">
-              <ul>
-                <li>
-                  Ekta <b>Windows PC ba laptop</b>. Phone er MT5 app e EA chole na, tai PC lagbe. (Mac e MetaTrader 5 app thakle sheta-o cholbe.)
-                </li>
-                <li>
-                  Ekta <b>Exness MT5 account</b>: tar <b>login number</b>, <b>trading password</b> ar <b>server</b> er naam (Step 2 e kothay pabe dekhano
-                  ache).
-                </li>
-                <li>Internet connection, ar apnar email (Journal e login korar jonno).</li>
-              </ul>
-              <Note kind="info">
-                Order Exness website, Exness Trade app ba MT5, je kono jaygay theke dite paren. Shob order ek-i Exness server e save hoy, ar MT5 shegula
-                dekhte pay. MT5 shudhu data pathanor kaj kore.
-              </Note>
-            </Step>
-
-            <Step n={1} id="journal" title="Journal e account khulun" time="2 min">
+          <div className="mt-12">
+            <Step n={1} id="login" title="Log in to your trading account" time="1 min">
               <ol>
                 <li>
-                  Browser e kholun: <Code>{APP_URL}</Code>
+                  Open MetaTrader 5 on your computer and go to <Path items={["File", "Login to Trade Account"]} />.
                 </li>
                 <li>
-                  <b>Sign in</b> e click kore apnar <b>email</b> din, <b>Continue</b> chapun.
-                </li>
-                <li>Email e ekta 6 digit er code ashbe (Spam folder o dekhben). Code ta boshan.</li>
-                <li>
-                  Prothombar hole naam, <b>Timezone</b> (Bangladesh hole <Code>Asia/Dhaka</Code>) ar currency diye <b>Continue</b>.
-                </li>
-              </ol>
-              <Note kind="tip">Protiti user nijer email diye login korbe. Apnar data shudhu apni dekhben.</Note>
-            </Step>
-
-            <Step n={2} id="exness" title="Exness theke account er tottho nin" time="2 min">
-              <ol>
-                <li>
-                  <Code>my.exness.com</Code> e login korun → <Path items={["My accounts"]} />
+                  Enter your <b>Login</b> (account number), <b>Password</b> (the <i>trading</i> password, not your Exness website password) and{" "}
+                  <b>Server</b> (for example <Code>Exness-MT5Real8</Code>). Tick <b>Save password</b> and click <b>OK</b>.
                 </li>
                 <li>
-                  Je account er trade Journal e chan, oi card e lekha ache: <b>account number</b> (jemon <Code>412155770</Code>), <b>MT5</b> ar <b>Real/Demo</b>.
-                </li>
-                <li>
-                  Card er <Kbd>⋮</Kbd> (tin dot) → <Path items={["Account information"]} /> → <b>Server</b> er naam likhe rakhun (jemon{" "}
-                  <Code>Exness-MT5Real8</Code>).
-                </li>
-                <li>
-                  Trading password mone na thakle: <Kbd>⋮</Kbd> → <Path items={["Change trading password"]} /> → notun password din, likhe rakhun.
-                </li>
-              </ol>
-              <Note kind="warn">
-                <b>Trading password</b> ar Exness website er login password alada jinish. MT5 e trading password lagbe. Account ta <b>MT4</b> hole ei EA kaj
-                korbe na, <b>MT5</b> account lagbe.
-              </Note>
-            </Step>
-
-            <Step n={3} id="install" title="PC te MT5 install korun" time="3 min">
-              <ol>
-                <li>
-                  Exness Personal Area e account card er <b>Trade</b> button → <b>MetaTrader 5</b> → <b>Download</b> (Windows). Othoba exness.com er{" "}
-                  <b>Platforms → MetaTrader 5</b> page theke download korun.
-                </li>
-                <li>
-                  Download hoya setup file (jemon <Code>exness5setup.exe</Code>) double-click kore install korun → <b>Next</b> → <b>Finish</b>.
-                </li>
-                <li>MT5 nijei khulbe. Agei install kora thakle ei step bad din.</li>
-              </ol>
-            </Step>
-
-            <Step n={4} id="login" title="MT5 e account e login korun" time="1 min">
-              <ol>
-                <li>
-                  MT5 er upore menu: <Path items={["File", "Login to Trade Account"]} />
-                </li>
-                <li>
-                  <b>Login</b> = account number, <b>Password</b> = trading password, <b>Server</b> = Step 2 er server. <b>Save password</b> e tick din →{" "}
-                  <b>OK</b>.
-                </li>
-                <li>
-                  Thik moto login hoyeche kina dekhun:
+                  Make sure you are really logged in:
                   <ul className="mt-1.5">
                     <li>
-                      Window er <b>nicher dan kone</b> ping dekhabe (jemon <Code>45.2 ms</Code>). Lal dot ba <Code>Invalid account</Code> lekha thakle
-                      password ba server vul.
+                      The bottom-right corner of MT5 shows a ping such as <Code>45.2 ms</Code>, not a red icon or <Code>Invalid account</Code>.
                     </li>
                     <li>
-                      Niche <b>Toolbox</b> panel e (na dekhle <Kbd>Ctrl</Kbd> + <Kbd>T</Kbd>) <b>Trade</b> ar <b>History</b> tab thakbe.
+                      The <b>Toolbox</b> panel at the bottom (<Kbd>Ctrl</Kbd> + <Kbd>T</Kbd> if hidden) has <b>Trade</b> and <b>History</b> tabs.
                     </li>
                   </ul>
                 </li>
               </ol>
               <Note kind="warn">
-                Toolbox e <b>History</b> tab na thakle MT5 apnar account e dhukte pareni. Tokhon EA kono trade pathate parbe na. Password abar din.
+                No <b>History</b> tab means MT5 isn&apos;t logged in, and the EA will have nothing to send. You can find the server name and reset the trading
+                password in Exness Personal Area under <Path items={["My accounts", "⋮", "Account information"]} />.
               </Note>
             </Step>
 
-            <Step n={5} id="key" title="Sync key ar EA file nin" time="2 min">
+            <Step n={2} id="key" title="Get your sync key and the EA file" time="1 min">
               <ol>
                 <li>
-                  Journal e: <Path items={["Accounts", "Connect auto-sync"]} /> (account na thakle age <b>Add account</b>, ba je kono card er{" "}
-                  <b>Connect auto-sync</b>).
+                  In Journal, open <Path items={["Accounts", "Connect auto-sync", "MT5 EA"]} />.
                 </li>
                 <li>
-                  <b>MT5 EA</b> tab → <b>Generate key</b> → <Code>jrn_…</Code> diye shuru howa key ta <b>Copy</b> kore Notepad e rakhun.
+                  Click <b>Generate key</b> and copy the key (it starts with <Code>jrn_</Code>). Keep it somewhere safe, such as Notepad — it is shown only
+                  once.
                 </li>
                 <li>
-                  <b>Download JournalSync.mq5</b> chapun. File ta PC er <Code>Downloads</Code> folder e jabe.
+                  Click <b>Download JournalSync.mq5</b>. The file is saved in your <Code>Downloads</Code> folder with your Journal address already filled in.
                 </li>
               </ol>
-              <Note kind="warn">Key ta ekbar-i dekhay. Kauke diben na: ei key diye pathano data apnar account e jabe.</Note>
-              <Note kind="tip">Ek-i key diye apnar shob Exness account sync kora jay. Protiti account er jonno notun key lagbe na.</Note>
+              <Note kind="tip">One key works for all of your MT5 accounts. Don&apos;t share it — anything sent with it lands in your journal.</Note>
             </Step>
 
-            <Step n={6} id="folder" title="EA file ta Experts folder e rakhun" time="1 min">
+            <Step n={3} id="folder" title="Put the file in the Experts folder" time="1 min">
               <ol>
                 <li>
-                  MT5 er menu: <Path items={["File", "Open Data Folder"]} />. Ekta folder khulbe.
+                  In MT5, go to <Path items={["File", "Open Data Folder"]} />. A folder opens in Windows Explorer.
                 </li>
                 <li>
-                  Oi folder e: <Path items={["MQL5", "Experts"]} /> folder e dhukun.
+                  Open <Path items={["MQL5", "Experts"]} />.
                 </li>
                 <li>
-                  <Code>Downloads</Code> theke <Code>JournalSync.mq5</Code> copy kore ei <b>Experts</b> folder e paste korun.
+                  Copy <Code>JournalSync.mq5</Code> from <Code>Downloads</Code> and paste it here. Replace the old file if there is one.
                 </li>
               </ol>
-              <Note kind="info">
-                Purono JournalSync file thakle replace korun. Notun version e bug fix ar bhalo message thake.
-              </Note>
             </Step>
 
-            <Step n={7} id="compile" title="EA compile korun" time="1 min">
+            <Step n={4} id="compile" title="Compile the EA" time="1 min">
               <ol>
                 <li>
-                  MT5 er upore toolbar e <b>IDE</b> button (ba <Kbd>F4</Kbd>). <b>MetaEditor</b> khulbe.
+                  In MT5, click <b>IDE</b> in the toolbar (or press <Kbd>F4</Kbd>). <b>MetaEditor</b> opens.
                 </li>
                 <li>
-                  MetaEditor er bam pashe <Path items={["MQL5", "Experts", "JournalSync.mq5"]} /> e double-click.
+                  In MetaEditor&apos;s Navigator, double-click <Path items={["MQL5", "Experts", "JournalSync.mq5"]} />.
                 </li>
                 <li>
-                  Upore <b>Compile</b> button (ba <Kbd>F7</Kbd>).
-                </li>
-                <li>
-                  Niche <b>Errors</b> tab e <Code>0 errors</Code> lekha ashle hoye geche. MetaEditor bondho korun.
+                  Click <b>Compile</b> (or press <Kbd>F7</Kbd>). The <b>Errors</b> tab at the bottom should say <Code>0 errors</Code>. Close MetaEditor.
                 </li>
               </ol>
               <Note kind="warn">
-                MetaEditor e <b>Start / Debug</b> (<Kbd>F5</Kbd>) chapben na. Tahole &quot;JournalSync (debugging)&quot; namer ekta copy chole. Bhule chalu
-                hole <Kbd>Shift</Kbd> + <Kbd>F5</Kbd> diye bondho korun.
+                Don&apos;t press <b>Start</b> / <Kbd>F5</Kbd> in MetaEditor — that starts a separate &quot;JournalSync (debugging)&quot; copy. If it is running,
+                stop it with <Kbd>Shift</Kbd> + <Kbd>F5</Kbd>.
               </Note>
             </Step>
 
-            <Step n={8} id="webrequest" title="MT5 ke internet e pathanor onumoti din" time="1 min">
+            <Step n={5} id="webrequest" title="Allow MT5 to reach Journal" time="1 min">
               <ol>
                 <li>
-                  MT5 er menu: <Path items={["Tools", "Options"]} /> → <b>Expert Advisors</b> tab.
+                  In MT5, go to <Path items={["Tools", "Options"]} /> and open the <b>Expert Advisors</b> tab.
                 </li>
                 <li>
-                  <b>Allow WebRequest for listed URL</b> e tick din.
+                  Tick <b>Allow WebRequest for listed URL</b>.
                 </li>
                 <li>
-                  Nicher list e <b>add new URL</b> e double-click kore likhun: <Code>{APP_URL}</Code>
+                  Double-click <b>add new URL</b> and type your Journal address: <Code>{APP_URL}</Code>
                   <br />
                   <span className="text-sm text-muted-foreground">
-                    <Code>https://</Code> soho, shesh e <Code>/</Code> chara. Browser e je address diye Journal khulen, hubohu sheta.
+                    Include <Code>https://</Code>, no <Code>/</Code> at the end — exactly the address you use in the browser.
                   </span>
                 </li>
                 <li>
-                  <b>OK</b>.
+                  Click <b>OK</b>.
                 </li>
               </ol>
             </Step>
 
-            <Step n={9} id="attach" title="EA chart e lagan" time="2 min">
+            <Step n={6} id="attach" title="Attach the EA and paste your key" time="2 min">
               <ol>
                 <li>
-                  Ekta chart khola rakhun. Na thakle: <Path items={["File", "New Chart", "EURUSD"]} /> (je kono symbol cholbe).
+                  Open any chart, for example <Path items={["File", "New Chart", "EURUSD"]} />. The symbol doesn&apos;t matter.
                 </li>
                 <li>
-                  Bam pashe <b>Navigator</b> (na dekhle <Path items={["View", "Navigator"]} /> ba <Kbd>Ctrl</Kbd> + <Kbd>N</Kbd>) →{" "}
-                  <Path items={["Expert Advisors", "JournalSync"]} />
-                  <br />
-                  <span className="text-sm text-muted-foreground">
-                    JournalSync na dekhle <b>Expert Advisors</b> e right-click → <b>Refresh</b>.
-                  </span>
+                  Open the <b>Navigator</b> (<Path items={["View", "Navigator"]} /> or <Kbd>Ctrl</Kbd> + <Kbd>N</Kbd>) and find{" "}
+                  <Path items={["Expert Advisors", "JournalSync"]} />. If it isn&apos;t listed, right-click <b>Expert Advisors</b> and choose <b>Refresh</b>.
                 </li>
                 <li>
-                  <b>JournalSync</b> ke mouse diye tene chart er upor chere din (drag &amp; drop). Ba right-click → <b>Attach to a chart</b>.
+                  Drag <b>JournalSync</b> onto the chart (or right-click it and choose <b>Attach to a chart</b>).
                 </li>
                 <li>
-                  Je window khulbe tar <b>Inputs</b> tab:
+                  In the window that opens, go to the <b>Inputs</b> tab:
                   <ul className="mt-1.5">
                     <li>
-                      <b>Journal URL</b>: agei boshano (<Code>{APP_URL}</Code>). Bodlaben na.
+                      <b>Journal URL</b> — already filled in. Leave it.
                     </li>
                     <li>
-                      <b>Sync key</b>: <b>Value</b> ghore double-click → Step 5 er key paste → <Kbd>Enter</Kbd>.
+                      <b>Sync key</b> — double-click the <b>Value</b> cell, paste your key, press <Kbd>Enter</Kbd>.
                     </li>
                     <li>
-                      <b>History sent on first run (days)</b>: kot din ager trade pathabe (default 90). Purono shob chaile 365 ba 1000 din.
+                      <b>History sent on first run (days)</b> — how far back to send on the first run (default 90). Use 365 or more for older trades.
                     </li>
                   </ul>
                 </li>
                 <li>
-                  <b>OK</b>.
+                  Click <b>OK</b>.
                 </li>
               </ol>
               <Note kind="info">
-                EA kono trade kore na, shudhu data pathay. Tai upore <b>Algo Trading</b> button on/off jai thakuk, sync hobe.
+                The EA never trades, so it works whether the <b>Algo Trading</b> button is on or off.
               </Note>
             </Step>
 
-            <Step n={10} id="check" title="Kaj korche kina dekhun" time="1 min">
+            <Step n={7} id="check" title="Check that it syncs" time="1 min">
               <ol>
                 <li>
-                  Chart er <b>upore-bam kone</b> 10–20 second er moddhe lekha ashbe:
+                  Within 10–20 seconds the top-left corner of the chart shows:
                   <br />
                   <Code>Journal sync: synced 13:05 · 42 deals sent since start (42 new) · history from 2026.08.17</Code>
                 </li>
                 <li>
-                  Journal e <b>Accounts</b> page refresh korun. Account e <b>Connected</b>, balance ar <b>Synced just now</b> dekhabe.
+                  In Journal, refresh <b>Accounts</b>: the account shows <b>Connected</b>, its balance and <b>Synced just now</b>.
                 </li>
                 <li>
-                  <b>Trades</b> ba <b>Calendar</b> e trade gula dekhun. Upore account filter e <b>All accounts</b> ba oi account select kora ache kina
-                  dekhun.
+                  Your trades appear in <b>Trades</b> and <b>Calendar</b>. If not, check that the account filter at the top is set to <b>All accounts</b>{" "}
+                  or to this account.
                 </li>
               </ol>
-              <Note kind="done">Hoye geche! Ekhon theke notun trade 5–10 second er moddhe Journal e chole ashbe.</Note>
+              <Note kind="done">
+                Done. While MT5 is open, new trades reach Journal within seconds. If your computer was off, MT5 sends everything it missed as soon as it
+                starts again.
+              </Note>
               <Note kind="tip">
-                MT5 theke nijei add howa account er naam hoy <Code>Real ··5770</Code> er moto. Card e naam er pashe ✏️ <b>Name it</b> chepe pochonder naam
-                din.
+                Accounts the EA adds by itself get a name like <Code>Real ··5770</Code>. Click <b>Name it</b> on the account card to rename it.
               </Note>
             </Step>
 
-            <Step n={11} id="daily" title="Protidin er babohar">
+            <Step n={8} id="more" title="Sync another account">
               <ul>
                 <li>
-                  PC te <b>MT5 khola</b> thakle trade real-time e ashe. MT5 bondho korar age kichu korte hobe na.
+                  Log in to the other account with <Path items={["File", "Login to Trade Account"]} />. The same EA and key send its trades, and Journal
+                  adds the account automatically.
                 </li>
                 <li>
-                  PC bondho chilo? Abar MT5 khullei EA miss kora shob trade pathiye dey. Kichu hariye jay na.
-                </li>
-                <li>
-                  Data dekhar jonno MT5 lage na: phone ba je kono browser theke Journal khulun. Phone e browser menu → <b>Add to Home Screen</b> dile app er
-                  moto khule.
-                </li>
-                <li>
-                  Exness e trading password bodlale MT5 e abar login korte hobe (<Path items={["File", "Login to Trade Account"]} />), noile sync thame.
+                  MT5 is logged in to one account at a time. To sync two accounts live at once, install MT5 a second time into another folder (choose it
+                  under <b>Settings</b> in the installer, e.g. <Code>C:\MT5-Account2</Code>) and repeat steps 1 and 3–6 there with the same key.
                 </li>
               </ul>
             </Step>
 
-            <Step n={12} id="more" title="Aro account / onno user">
-              <p>
-                <b>Nijer arekta Exness account:</b>
-              </p>
-              <ul>
-                <li>
-                  MT5 e <Path items={["File", "Login to Trade Account"]} /> diye oi account e login korun. Ek-i EA ar ek-i key oi account er data pathabe,
-                  Journal e notun card nijei toiri hobe.
-                </li>
-                <li>
-                  Ekta MT5 e ek shomoy ekta account login thake. Duita account ek shathe real-time chaile MT5 abar install korun alada folder e (installer
-                  er <b>Settings</b> e folder bodlan, jemon <Code>C:\MT5-Account2</Code>), oikhane Step 4–9 abar korun ek-i key diye.
-                </li>
-              </ul>
-              <p>
-                <b>Onno manush (onno user):</b>
-              </p>
-              <ul>
-                <li>
-                  Tini <b>nijer email</b> e Journal account khulben, <b>nijer PC te</b> nijer MT5 e ei puro guide follow korben, ar <b>nijer key</b> banaben.
-                  Apnar key kauke diben na.
-                </li>
-              </ul>
-            </Step>
-
-            <Step n={13} id="history" title="Purono history abar pathano">
-              <p>EA mone rakhe kon porjonto pathiyeche. Shob abar pathate chaile:</p>
+            <Step n={9} id="history" title="Send older history again">
+              <p>The EA remembers how far it has synced. To send everything again:</p>
               <ol>
                 <li>
-                  MT5: <Path items={["Tools", "Global Variables"]} /> (ba <Kbd>F3</Kbd>) → <Code>JournalSync_&lt;account number&gt;</Code> select →{" "}
-                  <b>Delete</b>.
+                  In MT5, open <Path items={["Tools", "Global Variables"]} /> (<Kbd>F3</Kbd>), select <Code>JournalSync_&lt;account number&gt;</Code> and
+                  click <b>Delete</b>.
                 </li>
                 <li>
-                  Chart e right-click → <Path items={["Expert Advisors", "Properties"]} /> (ba chart e click kore <Kbd>F7</Kbd>) → <b>Inputs</b> →{" "}
-                  <b>History sent on first run (days)</b> = <Code>365</Code> → <b>OK</b>.
+                  Right-click the chart → <Path items={["Expert Advisors", "Properties"]} /> (or click the chart and press <Kbd>F7</Kbd>) →{" "}
+                  <b>Inputs</b> → set <b>History sent on first run (days)</b> to <Code>365</Code> → <b>OK</b>.
                 </li>
               </ol>
-              <Note kind="info">Ek-i trade duibar save hoy na, tai nishchinte abar pathate paren.</Note>
+              <Note kind="info">Trades are never saved twice, so re-sending is always safe.</Note>
             </Step>
 
-            <Step n={14} id="trouble" title="Shomossa hole">
+            <Step n={10} id="trouble" title="Troubleshooting">
               <p>
-                Chart er upore-bam kone je lekha ashe, ar MT5 er <Path items={["Toolbox", "Experts"]} /> tab er <Code>JournalSync</Code> line gula dekhun.
+                Read the text in the top-left corner of the chart, and the <Code>JournalSync</Code> lines in <Path items={["Toolbox", "Experts"]} />.
               </p>
               <div className="overflow-x-auto rounded-xl border">
                 <table className="w-full min-w-[560px] text-left text-sm">
                   <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr>
-                      <th className="px-3.5 py-2.5 font-medium">Chart e lekha</th>
-                      <th className="px-3.5 py-2.5 font-medium">Ki korben</th>
+                      <th className="px-3.5 py-2.5 font-medium">Message on the chart</th>
+                      <th className="px-3.5 py-2.5 font-medium">What to do</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y [&_td]:px-3.5 [&_td]:py-3 [&_td]:align-top">
                     {[
-                      ["set your Journal URL and sync key", "Step 9: Inputs e Sync key paste korun."],
-                      ["add https://… in Tools > Options > Expert Advisors", "Step 8: URL ta WebRequest list e hubohu add korun."],
+                      ["set your Journal URL and sync key", "Step 6: paste the key into Inputs → Sync key."],
+                      ["add https://… in Tools > Options > Expert Advisors", "Step 5: add the address to the WebRequest list exactly as shown."],
                       [
-                        "can't reach … (code 1001) / server replied 1001",
-                        "Antivirus er HTTPS/web scanning ar VPN off kore dekhun. Kaj korle antivirus e MT5 (terminal64.exe) ke exclude korun. URL https kina dekhun.",
+                        "can't reach … (code 1001)",
+                        "Turn off your antivirus' HTTPS / web scanning and any VPN, then try again. If that fixes it, exclude MT5 (terminal64.exe) in the antivirus. Check the address starts with https://.",
                       ],
-                      ["MT5 is not logged in to account …", "Step 4: trading password diye abar login korun. Toolbox e History tab ashte hobe."],
-                      ["server replied 401", "Key vul ba revoke kora. Journal e notun key banan (Step 5), Inputs e paste korun."],
-                      ["server replied 400: Unexpected payload…", "Journal er notun version deploy hoyeche kina dekhun, ar notun JournalSync.mq5 download kore Step 6–9 abar korun."],
-                      ["synced … kintu trade ashe na", "History tab e trade ache kina dekhun. Purono hole Step 13. Journal er upore account filter All accounts kina dekhun."],
-                      ["Kono lekha-i nei", "EA chart e lagano ache kina dekhun (chart er upore-dan kone EA er icon). Na thakle Step 9 abar."],
+                      ["MT5 is not logged in to account …", "Step 1: log in again with the trading password until the History tab appears."],
+                      ["server replied 401", "The key is wrong or revoked. Generate a new one (step 2) and paste it in Inputs."],
+                      ["server replied 400 …", "Download the latest JournalSync.mq5 and repeat steps 3, 4 and 6."],
+                      ["synced … but no trades in Journal", "Check the History tab has trades. For older trades see “Send older history again”. Set the account filter to All accounts."],
+                      ["No text on the chart", "The EA isn't attached. Repeat step 6 — its icon shows in the chart's top-right corner when it runs."],
                     ].map(([msg, fix]) => (
                       <tr key={msg}>
-                        <td className="w-[44%] font-mono text-[12.5px]">{msg}</td>
+                        <td className="w-[42%] font-mono text-[12.5px]">{msg}</td>
                         <td>{fix}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <Note kind="info">
-                Tobuo na hole chart er lekha ar <b>Experts</b> tab er screenshot niye admin ke pathan.
-              </Note>
             </Step>
           </div>
         </main>

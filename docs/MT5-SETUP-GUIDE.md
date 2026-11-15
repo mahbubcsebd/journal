@@ -1,152 +1,119 @@
-# Exness MT5 → Journal auto-sync: step by step guide
+# Connect MetaTrader 5 to Journal
 
-Ei guide follow korle Exness account e je kono jaygay (Exness website, Exness app ba MT5) theke
-deya protiti order nijei Journal e save hobe. Order moto korun, kono step skip korben na.
-Shomoy lage 15–20 minute.
+The **JournalSync** Expert Advisor runs inside MetaTrader 5 on your computer and sends every deal,
+your balance and open positions to Journal. It only reads your account — it never places or changes
+a trade. Follow the steps in order; every menu name is written exactly as it appears in MT5.
 
-> App er bhetore o ek-i guide ache, chhobi-r moto menu path soho: **`/guide/mt5`**
-> (jemon `https://<tomar-app>.vercel.app/guide/mt5`). Login chara-o khole, tai notun user ke
-> link ta pathiye din.
+> The same guide is in the app at **`/guide/mt5`** (public — share the link with new users).
 
-Niche `<APP_URL>` mane apnar Journal er address, jemon `https://journal-xxxx.vercel.app`
-(https soho, shesh e `/` chara).
+`<APP_URL>` below is your Journal address, e.g. `https://journal-xxxx.vercel.app`
+(with `https://`, no `/` at the end).
+
+## At a glance: what goes where
+
+| What | Where in MetaTrader 5 |
+|---|---|
+| `JournalSync.mq5` | **File → Open Data Folder → MQL5 → Experts** |
+| Your Journal address | **Tools → Options → Expert Advisors → Allow WebRequest for listed URL** |
+| Your sync key | JournalSync on a chart → **Inputs → Sync key** |
 
 ---
 
-## 0. Ki ki lagbe
+## 1. Log in to your trading account (~1 min)
 
-- Ekta **Windows PC ba laptop**. Phone er MT5 app e EA chole na. (Mac e MetaTrader 5 app thakle sheta-o cholbe.)
-- Ekta **Exness MT5 account**: **login number**, **trading password**, **server** er naam.
-- Internet ar apnar email.
+1. In MetaTrader 5: **File → Login to Trade Account**.
+2. Enter **Login** (account number), **Password** (the *trading* password, not your Exness website
+   password) and **Server** (e.g. `Exness-MT5Real8`). Tick **Save password** → **OK**.
+3. Make sure you are really logged in:
+   - The bottom-right corner shows a ping such as `45.2 ms` — not a red icon or `Invalid account`.
+   - The **Toolbox** panel (`Ctrl + T` if hidden) has **Trade** and **History** tabs.
 
-Order kothay theke diyechen tate kichu jay ase na. Shob order ek-i Exness server e thake, MT5 shegula dekhte pay. MT5 shudhu data pathanor kaj kore.
+> ⚠️ No **History** tab means MT5 isn't logged in and the EA has nothing to send. The server name and
+> a trading-password reset are in Exness Personal Area → **My accounts → ⋮ → Account information**.
 
-## 1. Journal e account khulun (~2 min)
+## 2. Get your sync key and the EA file (~1 min)
 
-1. Browser e `<APP_URL>` kholun.
-2. **Sign in** → email din → **Continue**.
-3. Email e 6 digit er code ashbe (Spam folder o dekhun) → code boshan.
-4. Prothombar hole naam, **Timezone** (Bangladesh: `Asia/Dhaka`) ar currency → **Continue**.
+1. In Journal: **Accounts → Connect auto-sync → MT5 EA**.
+2. **Generate key** and copy it (starts with `jrn_`). Keep it safe — it is shown only once.
+3. **Download JournalSync.mq5** — it is saved in `Downloads` with your Journal address filled in.
 
-Protiti user nijer email diye login korbe. Apnar data shudhu apni dekhben.
+One key works for all your MT5 accounts. Don't share it.
 
-## 2. Exness theke account er tottho nin (~2 min)
+## 3. Put the file in the Experts folder (~1 min)
 
-1. `my.exness.com` → **My accounts**.
-2. Je account chan tar **account number** (jemon `412155770`), **MT5**, **Real/Demo** dekhun.
-3. Card er **⋮** → **Account information** → **Server** likhe rakhun (jemon `Exness-MT5Real8`).
-4. Trading password mone na thakle: **⋮** → **Change trading password**.
+1. In MT5: **File → Open Data Folder**.
+2. Open **MQL5 → Experts**.
+3. Copy `JournalSync.mq5` from `Downloads` and paste it here (replace the old one if asked).
 
-> ⚠️ **Trading password** ar Exness website er login password alada. Account **MT4** hole ei EA kaj korbe na, **MT5** lagbe.
+## 4. Compile the EA (~1 min)
 
-## 3. PC te MT5 install korun (~3 min)
+1. In MT5 click **IDE** in the toolbar (or `F4`) — **MetaEditor** opens.
+2. In MetaEditor's Navigator double-click **MQL5 → Experts → JournalSync.mq5**.
+3. **Compile** (or `F7`). The **Errors** tab must say `0 errors`. Close MetaEditor.
 
-1. Personal Area e account card er **Trade** → **MetaTrader 5** → **Download** (Windows).
-   Othoba exness.com er **Platforms → MetaTrader 5** page theke.
-2. Setup file (jemon `exness5setup.exe`) double-click → **Next** → **Finish**.
-3. Agei install thakle ei step bad.
+> ⚠️ Don't press **Start** / `F5` in MetaEditor — it runs a separate "JournalSync (debugging)" copy.
+> Stop it with `Shift + F5`.
 
-## 4. MT5 e account e login korun (~1 min)
-
-1. Menu: **File → Login to Trade Account**.
-2. **Login** = account number, **Password** = trading password, **Server** = Step 2 er server, ✅ **Save password** → **OK**.
-3. Check:
-   - Window er nicher-dan kone ping dekhabe (jemon `45.2 ms`). Lal dot / `Invalid account` = password ba server vul.
-   - Niche **Toolbox** (na dekhle `Ctrl + T`) e **Trade** ar **History** tab thakbe.
-
-> ⚠️ **History** tab na thakle MT5 account e dhukte pareni, EA kono trade pathate parbe na.
-
-## 5. Sync key ar EA file nin (~2 min)
-
-1. Journal → **Accounts** → **Connect auto-sync** (account na thakle age **Add account**).
-2. **MT5 EA** tab → **Generate key** → `jrn_…` diye shuru howa key **Copy** kore Notepad e rakhun.
-3. **Download JournalSync.mq5** → file ta `Downloads` folder e jabe.
-
-> ⚠️ Key ekbar-i dekhay. Kauke diben na. Ek-i key diye apnar shob Exness account sync hoy.
-
-## 6. EA file ta Experts folder e rakhun (~1 min)
-
-1. MT5 menu: **File → Open Data Folder**.
-2. Oi folder e **MQL5 → Experts**.
-3. `Downloads` theke `JournalSync.mq5` copy kore **Experts** e paste (purono thakle replace).
-
-## 7. EA compile korun (~1 min)
-
-1. MT5 toolbar e **IDE** (ba `F4`) → **MetaEditor** khulbe.
-2. Bam pashe **MQL5 → Experts → JournalSync.mq5** double-click.
-3. **Compile** (ba `F7`) → niche **Errors** tab e `0 errors` → MetaEditor bondho.
-
-> ⚠️ MetaEditor e **Start/Debug** (`F5`) chapben na, tahole "JournalSync (debugging)" copy chole. Bondho: `Shift + F5`.
-
-## 8. MT5 ke internet e pathanor onumoti din (~1 min)
+## 5. Allow MT5 to reach Journal (~1 min)
 
 1. **Tools → Options → Expert Advisors** tab.
-2. ✅ **Allow WebRequest for listed URL**.
-3. **add new URL** e double-click → `<APP_URL>` (https soho, shesh e `/` chara, browser e je address diye Journal khulen hubohu sheta).
+2. Tick **Allow WebRequest for listed URL**.
+3. Double-click **add new URL** and type `<APP_URL>` — exactly the address you use in the browser.
 4. **OK**.
 
-## 9. EA chart e lagan (~2 min)
+## 6. Attach the EA and paste your key (~2 min)
 
-1. Ekta chart khola rakhun. Na thakle **File → New Chart → EURUSD**.
-2. **Navigator** (na dekhle **View → Navigator** ba `Ctrl + N`) → **Expert Advisors → JournalSync**.
-   Na dekhle **Expert Advisors** e right-click → **Refresh**.
-3. **JournalSync** ke tene chart e chere din (ba right-click → **Attach to a chart**).
+1. Open any chart, e.g. **File → New Chart → EURUSD**.
+2. Open the **Navigator** (**View → Navigator** or `Ctrl + N`) → **Expert Advisors → JournalSync**.
+   Not listed? Right-click **Expert Advisors → Refresh**.
+3. Drag **JournalSync** onto the chart (or right-click → **Attach to a chart**).
 4. **Inputs** tab:
-   - **Journal URL**: agei boshano, bodlaben na.
-   - **Sync key**: **Value** e double-click → key paste → `Enter`.
-   - **History sent on first run (days)**: default 90; purono shob chaile 365 ba 1000.
+   - **Journal URL** — already filled in; leave it.
+   - **Sync key** — double-click **Value**, paste the key, press `Enter`.
+   - **History sent on first run (days)** — default 90; use 365 or more for older trades.
 5. **OK**.
 
-EA kono trade kore na, shudhu data pathay. **Algo Trading** button on/off jai thakuk, sync hobe.
+The EA never trades, so it works whether **Algo Trading** is on or off.
 
-## 10. Kaj korche kina dekhun (~1 min)
+## 7. Check that it syncs (~1 min)
 
-1. Chart er upore-bam kone 10–20 second e:
+1. Within 10–20 seconds the chart's top-left corner shows:
    `Journal sync: synced 13:05 · 42 deals sent since start (42 new) · history from 2026.08.17`
-2. Journal → **Accounts** refresh → **Connected**, balance, **Synced just now**.
-3. **Trades** / **Calendar** e trade dekhun. Upore account filter e **All accounts** ba oi account select kina dekhun.
+2. In Journal, refresh **Accounts** — the account is **Connected** with its balance and **Synced just now**.
+3. Trades appear in **Trades** and **Calendar** (account filter at the top: **All accounts** or this account).
 
-✅ Hoye geche. Notun trade 5–10 second e chole ashbe.
-MT5 theke nijei add howa account er naam `Real ··5770` er moto hoy; card e **✏️ Name it** chepe naam din.
+✅ Done. While MT5 is open, new trades arrive within seconds. If the computer was off, MT5 sends
+everything it missed when it starts again. Accounts the EA adds get a name like `Real ··5770` —
+click **Name it** on the card to rename.
 
-## 11. Protidin er babohar
+---
 
-- PC te **MT5 khola** thakle trade real-time e ashe.
-- PC bondho chilo? MT5 abar khullei miss kora shob trade chole ashe.
-- Data dekhte MT5 lage na: phone ba je kono browser theke Journal khulun. Phone e browser menu → **Add to Home Screen**.
-- Exness e trading password bodlale MT5 e abar **File → Login to Trade Account**.
+## Sync another account
 
-## 12. Aro account / onno user
+- Log in to it with **File → Login to Trade Account**. The same EA and key send its trades; Journal
+  adds the account automatically.
+- MT5 is logged in to one account at a time. To sync two accounts live, install MT5 again into another
+  folder (installer → **Settings**, e.g. `C:\MT5-Account2`) and repeat steps 1 and 3–6 with the same key.
 
-**Nijer arekta Exness account:** MT5 e **File → Login to Trade Account** diye oi account e login korun.
-Ek-i EA, ek-i key; Journal e notun card nijei hobe. Duita account ek shathe real-time chaile MT5
-abar install korun alada folder e (installer er **Settings** e folder, jemon `C:\MT5-Account2`),
-oikhane Step 4–9 abar, ek-i key diye.
+## Send older history again
 
-**Onno manush:** nijer email e Journal account, nijer PC te nijer MT5 e ei puro guide, ar **nijer key**.
-Apnar key kauke diben na.
+1. **Tools → Global Variables** (`F3`) → select `JournalSync_<account number>` → **Delete**.
+2. Right-click the chart → **Expert Advisors → Properties** (or click the chart and press `F7`) →
+   **Inputs** → **History sent on first run (days)** = `365` → **OK**.
 
-## 13. Purono history abar pathano
+Trades are never saved twice, so re-sending is safe.
 
-1. MT5: **Tools → Global Variables** (`F3`) → `JournalSync_<account number>` → **Delete**.
-2. Chart e right-click → **Expert Advisors → Properties** (ba chart e click kore `F7`) → **Inputs** →
-   **History sent on first run (days)** = `365` → **OK**.
+## Troubleshooting
 
-Ek-i trade duibar save hoy na.
+Read the chart's top-left text and the `JournalSync` lines in **Toolbox → Experts**.
 
-## 14. Shomossa hole
-
-Chart er upore-bam kone er lekha ar MT5 **Toolbox → Experts** tab er `JournalSync` line gula dekhun.
-
-| Chart e lekha | Ki korben |
+| Message on the chart | What to do |
 |---|---|
-| `set your Journal URL and sync key` | Step 9: Inputs e Sync key paste. |
-| `add https://… in Tools > Options > Expert Advisors` | Step 8: URL hubohu WebRequest list e add. |
-| `can't reach … (code 1001)` / `server replied 1001` | Antivirus er HTTPS/web scanning ar VPN off kore dekhun. Kaj korle antivirus e MT5 (`terminal64.exe`) ke exclude. URL https kina dekhun. |
-| `MT5 is not logged in to account …` | Step 4: trading password diye abar login. Toolbox e History tab ashte hobe. |
-| `server replied 401` | Key vul/revoke. Notun key (Step 5), Inputs e paste. |
-| `server replied 400: Unexpected payload…` | Journal er notun version deploy hoyeche kina dekhun; notun JournalSync.mq5 download kore Step 6–9 abar. |
-| `synced …` kintu trade ashe na | History tab e trade ache kina; purono hole Step 13; Journal er account filter **All accounts** kina. |
-| Kono lekha-i nei | Chart er upore-dan kone EA er icon ache kina; na thakle Step 9 abar. |
-
-Tobuo na hole chart er lekha ar **Experts** tab er screenshot admin ke pathan.
+| `set your Journal URL and sync key` | Step 6: paste the key into **Inputs → Sync key**. |
+| `add https://… in Tools > Options > Expert Advisors` | Step 5: add the address exactly as shown. |
+| `can't reach … (code 1001)` | Turn off antivirus HTTPS/web scanning and any VPN, then retry. If that fixes it, exclude MT5 (`terminal64.exe`) in the antivirus. Check the address starts with `https://`. |
+| `MT5 is not logged in to account …` | Step 1: log in with the trading password until the **History** tab appears. |
+| `server replied 401` | Key wrong or revoked: generate a new one (step 2) and paste it. |
+| `server replied 400 …` | Download the latest `JournalSync.mq5` and repeat steps 3, 4 and 6. |
+| `synced …` but no trades in Journal | Check the **History** tab has trades; for older ones see *Send older history again*; set the account filter to **All accounts**. |
+| No text on the chart | The EA isn't attached — repeat step 6 (its icon shows top-right on the chart when running). |
