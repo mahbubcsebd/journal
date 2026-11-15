@@ -4,7 +4,8 @@ import { motion } from "motion/react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useActionState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Field, Input } from "@/components/ui/input";
 import { COMMON_TIMEZONES, CURRENCIES } from "@/lib/constants";
 import { saveProfile, type ProfileState } from "@/server/actions/profile";
 
@@ -46,21 +47,23 @@ export function OnboardingForm({ email, defaultName }: { email: string; defaultN
         hint="Your trading days and calendar are grouped in this timezone."
         error={state.fieldErrors?.timezone?.[0]}
       >
-        <Select id="timezone" name="timezone" defaultValue={detectedTz} key={detectedTz}>
-          {zones.map((tz) => (
-            <option key={tz} value={tz}>
-              {tz.replace("_", " ")}
-            </option>
-          ))}
-        </Select>
+        <Combobox
+          id="timezone"
+          name="timezone"
+          defaultValue={detectedTz}
+          key={detectedTz}
+          searchPlaceholder="Search timezones…"
+          options={zones.map((tz) => ({ value: tz, label: tz.replaceAll("_", " ") }))}
+        />
       </Field>
 
       <Field label="Display currency" htmlFor="baseCurrency" error={state.fieldErrors?.baseCurrency?.[0]}>
-        <Select id="baseCurrency" name="baseCurrency" defaultValue="USD">
-          {CURRENCIES.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </Select>
+        <Combobox
+          id="baseCurrency"
+          name="baseCurrency"
+          defaultValue="USD"
+          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+        />
       </Field>
 
       <Button type="submit" size="lg" disabled={pending}>

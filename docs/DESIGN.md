@@ -14,7 +14,7 @@ Source of truth: src/app/globals.css (CSS vars + `@theme inline`). Light + `.dar
 App shell in src/app/(app)/layout.tsx: sidebar (components/layout/sidebar.tsx, nav-config.ts) + topbar + page-header.tsx per page. Command menu (cmdk).
 
 ## Components
-src/components/ui: button, card, badge, input, dialog, dropdown-menu, skeleton, otp-input, list-editor. Feature components in charts/, dashboard/, calendar/, etc. Motion helpers in components/motion.
+src/components/ui (shadcn/ui pattern, Radix + cmdk): button, card, badge, input, dialog, sheet, popover, command, combobox, confirm-dialog, dropdown-menu, skeleton, otp-input, list-editor. Feature components in charts/, dashboard/, calendar/, etc. Motion helpers in components/motion.
 
 ## Patterns
 - Buttons/badges via cva variants; merge classes with `cn` (clsx + tailwind-merge).
@@ -22,6 +22,9 @@ src/components/ui: button, card, badge, input, dialog, dropdown-menu, skeleton, 
 - Empty states: components/layout/coming-soon.tsx style; loading: Skeleton.
 - Focus ring: global `:focus-visible` outline using `--ring`.
 - Dark mode: always define both token sets; test both.
+
+- Every select is the shadcn `Combobox` (components/ui/combobox.tsx); in a plain form pass `name` + `defaultValue`. Never use a native `<select>`.
+- Every popup is the shadcn `Dialog` (side drawers use `Sheet`, which is the same Radix Dialog). Confirmations use `useConfirm()` / `usePrompt()` from confirm-dialog.tsx, never `window.confirm()` / `window.prompt()`.
 
 ## Don'ts
 - No hardcoded hex/hsl colors in components; use tokens.

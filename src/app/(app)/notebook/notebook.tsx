@@ -22,6 +22,7 @@ import type { DocNode } from "@/lib/doc";
 import { NOTE_TEMPLATES } from "@/lib/note-templates";
 import { cn, formatDateTime } from "@/lib/utils";
 import { createNote, deleteNote, updateNote } from "@/server/actions/notes";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Note = {
   id: string;
@@ -146,6 +147,7 @@ export function Notebook({ notes, selectedId, timezone }: { notes: Note[]; selec
 }
 
 function NoteEditor({ note, folders, onBack }: { note: Note; folders: string[]; onBack: () => void }) {
+  const confirm = useConfirm();
   const router = useRouter();
   const [title, setTitle] = useState(note.title);
   const [folder, setFolder] = useState(note.folder);
@@ -193,8 +195,8 @@ function NoteEditor({ note, folders, onBack }: { note: Note; folders: string[]; 
             size="icon-sm"
             aria-label="Delete note"
             className="hover:bg-loss-soft hover:text-loss"
-            onClick={() => {
-              if (!confirm(`Delete "${title}"?`)) return;
+            onClick={async () => {
+              if (!(await confirm({ title: `Delete "${title || "Untitled"}"?`, destructive: true }))) return;
               start(async () => {
                 await deleteNote(note.id);
                 router.push("/notebook", { scroll: false });

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Field, Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { createManualTrade, type ManualTradeState } from "@/server/actions/trades";
 
@@ -40,13 +41,13 @@ export function ManualTradeForm({
         <input type="hidden" name="side" value={side} />
         <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
           <Field label="Account" htmlFor="accountId" error={err("accountId")}>
-            <Select id="accountId" name="accountId">
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.label}
-                </option>
-              ))}
-            </Select>
+            <Combobox
+              id="accountId"
+              name="accountId"
+              defaultValue={accounts[0]?.id ?? ""}
+              placeholder="Choose account"
+              options={accounts.map((a) => ({ value: a.id, label: a.label }))}
+            />
           </Field>
           <Field label="Symbol" htmlFor="symbol" error={err("symbol")}>
             <Input id="symbol" name="symbol" list="symbols" placeholder="XAUUSD" required className="uppercase" />

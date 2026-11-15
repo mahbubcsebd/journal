@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
 import { deleteTag, updateTag } from "@/server/actions/tags";
 import { createTag } from "@/server/actions/trades";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Tag = {
   id: string;
@@ -29,6 +30,7 @@ const COLUMNS = [
 const PALETTE = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#06b6d4", "#8b5cf6", "#ef4444", "#84cc16", "#64748b"];
 
 export function TagBoard({ tags, currency }: { tags: Tag[]; currency: string }) {
+  const confirm = useConfirm();
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Record<string, string>>({});
 
@@ -98,8 +100,9 @@ export function TagBoard({ tags, currency }: { tags: Tag[]; currency: string }) 
                         type="button"
                         aria-label={`Delete ${t.name}`}
                         className="rounded p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-loss-soft hover:text-loss focus:opacity-100"
-                        onClick={() => {
-                          if (confirm(`Delete "${t.name}"? It will be removed from all trades.`)) start(() => deleteTag(t.id));
+                        onClick={async () => {
+                          const ok = await confirm({ title: `Delete "${t.name}"?`, description: "It will be removed from all trades.", destructive: true });
+                          if (ok) start(() => deleteTag(t.id));
                         }}
                       >
                         <Trash2 className="size-3.5" />

@@ -16,7 +16,8 @@ import { useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Field, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Field } from "@/components/ui/input";
 import { cn, formatMoney } from "@/lib/utils";
 import { commitImport, previewImport, type ImportPreview, type ImportResult } from "@/server/actions/import";
 
@@ -165,32 +166,29 @@ export function ImportWizard({ accounts }: { accounts: Account[] }) {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Account" htmlFor="account" hint="MT5 reports name their account, so it's matched automatically.">
-                  <Select
+                  <Combobox
                     id="account"
                     value={accountId}
-                    onChange={(e) => {
-                      setAccountId(e.target.value);
-                      if (file) choose(file, e.target.value);
+                    onValueChange={(id) => {
+                      setAccountId(id);
+                      if (file) choose(file, id);
                     }}
-                  >
-                    <option value="auto">Detect from file</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.nickname} · #{a.login}
-                      </option>
-                    ))}
-                  </Select>
+                    options={[
+                      { value: "auto", label: "Detect from file" },
+                      ...accounts.map((a) => ({ value: a.id, label: a.nickname, hint: `#${a.login}`, keywords: [a.login] })),
+                    ]}
+                  />
                 </Field>
                 <Field label="Report time zone" htmlFor="offset" hint="Exness server time is UTC+0. Exness CSV exports are always UTC.">
-                  <Select id="offset" value={offset} onChange={(e) => setOffset(e.target.value)}>
-                    {[-5, -4, 0, 1, 2, 3, 5.5, 6].map((h) => (
-                      <option key={h} value={h}>
-                        UTC{h >= 0 ? "+" : ""}
-                        {h}
-                        {h === 0 ? " (Exness)" : ""}
-                      </option>
-                    ))}
-                  </Select>
+                  <Combobox
+                    id="offset"
+                    value={offset}
+                    onValueChange={setOffset}
+                    options={[-5, -4, 0, 1, 2, 3, 5.5, 6].map((h) => ({
+                      value: String(h),
+                      label: `UTC${h >= 0 ? "+" : ""}${h}${h === 0 ? " (Exness)" : ""}`,
+                    }))}
+                  />
                 </Field>
               </div>
 

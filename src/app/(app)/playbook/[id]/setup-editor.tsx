@@ -12,10 +12,12 @@ import { useAutosave } from "@/hooks/use-autosave";
 import { ACCOUNT_COLORS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { deletePlaybookSetup, updatePlaybookSetup } from "@/server/actions/playbook";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Setup = { id: string; name: string; description: string | null; color: string; rules: string[]; checklist: string[] };
 
 export function SetupEditor({ setup }: { setup: Setup }) {
+  const confirm = useConfirm();
   const [v, setV] = useState({ name: setup.name, description: setup.description ?? "", color: setup.color, rules: setup.rules, checklist: setup.checklist });
   const [, start] = useTransition();
   const status = useAutosave(v, (val) => updatePlaybookSetup(setup.id, { ...val, name: val.name.trim() || "Untitled setup", description: val.description || null }));
@@ -71,7 +73,10 @@ export function SetupEditor({ setup }: { setup: Setup }) {
               variant="ghost"
               size="sm"
               className="text-loss hover:bg-loss-soft hover:text-loss"
-              onClick={() => confirm(`Delete "${v.name}"? Trades keep their data but lose this setup.`) && start(() => deletePlaybookSetup(setup.id))}
+              onClick={async () =>
+                (await confirm({ title: `Delete "${v.name}"?`, description: "Trades keep their data but lose this setup.", destructive: true })) &&
+                start(() => deletePlaybookSetup(setup.id))
+              }
             >
               <Trash2 /> Delete setup
             </Button>

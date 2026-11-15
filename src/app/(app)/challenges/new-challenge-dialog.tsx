@@ -4,7 +4,8 @@ import { Loader2, Plus } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Field, Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { createChallenge, type ChallengeFormState } from "@/server/actions/challenges";
 
@@ -55,22 +56,17 @@ function ChallengeForm({ accounts, today }: { accounts: Account[]; today: string
           <Input id="name" name="name" defaultValue="Evaluation" required />
         </Field>
         <Field label="Account" htmlFor="accountId" error={err("accountId")}>
-          <Select
+          <Combobox
             id="accountId"
             name="accountId"
             value={accountId}
-            onChange={(e) => {
-              setAccountId(e.target.value);
-              const a = accounts.find((x) => x.id === e.target.value);
+            onValueChange={(id) => {
+              setAccountId(id);
+              const a = accounts.find((x) => x.id === id);
               if (a?.balance) setBalance(String(a.balance));
             }}
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </Select>
+            options={accounts.map((a) => ({ value: a.id, label: a.label }))}
+          />
         </Field>
       </div>
       <div className="grid gap-2">

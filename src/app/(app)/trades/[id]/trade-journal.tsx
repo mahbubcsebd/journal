@@ -6,9 +6,11 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input, Label, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Input, Label } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { createSetup, createTag, deleteTrade, saveTradeJournal, type JournalInput } from "@/server/actions/trades";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type TagOpt = { id: string; name: string; kind: "TAG" | "MISTAKE" | "EMOTION"; color: string };
 
@@ -69,6 +71,7 @@ export function TradeJournal({
   tags: TagOpt[];
   setups: { id: string; name: string }[];
 }) {
+  const confirm = useConfirm();
   const [v, setV] = useState<JournalInput>(initial);
   const [tags, setTags] = useState(initialTags);
   const [setups, setSetups] = useState(initialSetups);
@@ -189,22 +192,14 @@ export function TradeJournal({
         <div className="grid gap-2">
           <Label htmlFor="setup">Setup</Label>
           {newSetup === null ? (
-            <Select
+            <Combobox
               id="setup"
               value={v.setupId ?? ""}
-              onChange={(e) => {
-                if (e.target.value === "__new") setNewSetup("");
-                else set("setupId", e.target.value || null);
-              }}
-            >
-              <option value="">No setup</option>
-              {setups.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-              <option value="__new">+ New setup…</option>
-            </Select>
+              onValueChange={(val) => set("setupId", val || null)}
+              searchPlaceholder="Search setups…"
+              options={[{ value: "", label: "No setup" }, ...setups.map((s) => ({ value: s.id, label: s.name }))]}
+              actions={[{ label: "New setup…", icon: <Plus />, onSelect: () => setNewSetup("") }]}
+            />
           ) : (
             <form
               className="flex gap-2"
@@ -232,20 +227,18 @@ export function TradeJournal({
           {(["emotionBefore", "emotionAfter"] as const).map((k) => (
             <div key={k} className="grid gap-2">
               <Label htmlFor={k}>{k === "emotionBefore" ? "Feeling before" : "Feeling after"}</Label>
-              <Select
+              <Combobox
                 id={k}
                 value={v[k] ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value || null;
+                onValueChange={(raw) => {
+                  const val = raw || null;
                   set(k, val);
                   if (val) ensureTag(val, "EMOTION", false);
                 }}
-              >
-                <option value="">—</option>
-                {emotions.map((e) => (
-                  <option key={e}>{e}</option>
-                ))}
-              </Select>
+                placeholder="—"
+                searchPlaceholder="Search feelings…"
+                options={[{ value: "", label: "—" }, ...emotions.map((e) => ({ value: e, label: e }))]}
+              />
             </div>
           ))}
         </div>
@@ -286,10 +279,15 @@ export function TradeJournal({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="backtest">Type</Label>
-            <Select id="backtest" value={v.isBacktest ? "1" : "0"} onChange={(e) => set("isBacktest", e.target.value === "1")}>
-              <option value="0">Live trade</option>
-              <option value="1">Backtest (excluded from stats)</option>
-            </Select>
+            <Combobox
+              id="backtest"
+              value={v.isBacktest ? "1" : "0"}
+              onValueChange={(val) => set("isBacktest", val === "1")}
+              options={[
+                { value: "0", label: "Live trade" },
+                { value: "1", label: "Backtest", hint: "Excluded from stats" },
+              ]}
+            />
           </div>
         </div>
 
@@ -311,8 +309,12 @@ export function TradeJournal({
           variant="ghost"
           size="sm"
           className="text-loss hover:bg-loss-soft hover:text-loss"
-          onClick={() => {
-            if (confirm("Delete this trade? Re-importing the report would bring it back.")) startBusy(() => deleteTrade(tradeId));
+          onClick={async () => {
+            const ok = await confirm({
+              title: "Delete this trade?",
+              description: "Re-importing the report would bring it back.", destructive: true,
+            });
+            if (ok) startBusy(() => deleteTrade(tradeId));
           }}
         >
           <Trash2 /> Delete

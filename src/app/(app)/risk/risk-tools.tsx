@@ -4,7 +4,8 @@ import { motion } from "motion/react";
 import { Calculator, Scale, ShieldAlert, Sigma, TrendingDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Field, Input } from "@/components/ui/input";
 import { defaultContractSize, losingStreakProbability, pipValuePerLot, positionSize, quoteCurrency, recoveryNeeded, riskReward } from "@/lib/risk";
 import { pipSize } from "@/lib/trading/symbols";
 import { cn, formatMoney } from "@/lib/utils";
@@ -126,22 +127,16 @@ function PositionSize({ accounts }: { accounts: Account[] }) {
       <div className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Account" htmlFor="ps-account" hint={cent ? "Cent account: amounts in USC, result in cent lots." : undefined}>
-            <Select
+            <Combobox
               id="ps-account"
               value={accountId}
-              onChange={(e) => {
-                setAccountId(e.target.value);
-                const a = accounts.find((x) => x.id === e.target.value);
+              onValueChange={(id) => {
+                setAccountId(id);
+                const a = accounts.find((x) => x.id === id);
                 if (a?.balance != null) setBalance(String(a.balance));
               }}
-            >
-              <option value="">Manual</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.label}
-                </option>
-              ))}
-            </Select>
+              options={[{ value: "", label: "Manual" }, ...accounts.map((a) => ({ value: a.id, label: a.label }))]}
+            />
           </Field>
           <Field label={`Balance (${currency})`} htmlFor="ps-balance">
             <Input id="ps-balance" type="number" min="0" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} />

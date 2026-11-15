@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import type { DocNode } from "@/lib/doc";
 import { cn } from "@/lib/utils";
+import { usePrompt } from "@/components/ui/confirm-dialog";
 
 type Props = {
   value: DocNode | null;
@@ -70,6 +71,7 @@ export function RichEditor({ value, onChange, placeholder, className, minHeight 
 }
 
 function Toolbar({ editor }: { editor: Editor | null }) {
+  const prompt = usePrompt();
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) =>
@@ -113,9 +115,9 @@ function Toolbar({ editor }: { editor: Editor | null }) {
       key: "link",
       icon: Link2,
       label: "Link",
-      run: () => {
+      run: async () => {
         if (editor.isActive("link")) return c().unsetLink().run();
-        const url = window.prompt("Link URL");
+        const url = await prompt({ title: "Add a link", label: "Link URL", placeholder: "https://…", inputType: "url", confirmLabel: "Add link" });
         if (url) c().setLink({ href: /^https?:\/\//.test(url) ? url : `https://${url}` }).run();
       },
     },

@@ -4,7 +4,8 @@ import { Download, Loader2, Search, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
 import { SESSION_LABEL } from "@/lib/trading/metrics";
 import { filtersToQuery, type TradeFilters } from "@/lib/trade-filters";
 import { cn } from "@/lib/utils";
@@ -94,39 +95,40 @@ export function TradeFiltersBar({ filters, options }: { filters: TradeFilters; o
           { value: "loss", label: "Losses" },
         ]}
       />
-      <Select
+      <Combobox
         aria-label="Session"
         value={filters.session ?? ""}
-        onChange={(e) => update({ session: e.target.value || undefined })}
+        onValueChange={(v) => update({ session: (v || undefined) as typeof filters.session })}
         className="h-9 w-auto"
-      >
-        <option value="">All sessions</option>
-        {Object.entries(SESSION_LABEL).map(([k, v]) => (
-          <option key={k} value={k}>
-            {v}
-          </option>
-        ))}
-      </Select>
+        options={[{ value: "", label: "All sessions" }, ...Object.entries(SESSION_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
+      />
       {options.tags.length > 0 && (
-        <Select aria-label="Tag" value={filters.tag ?? ""} onChange={(e) => update({ tag: e.target.value || undefined })} className="h-9 w-auto">
-          <option value="">All tags</option>
-          {options.tags.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.kind === "MISTAKE" ? "Mistake: " : t.kind === "EMOTION" ? "Emotion: " : ""}
-              {t.name}
-            </option>
-          ))}
-        </Select>
+        <Combobox
+          aria-label="Tag"
+          value={filters.tag ?? ""}
+          onValueChange={(v) => update({ tag: v || undefined })}
+          className="h-9 w-auto max-w-56"
+          searchPlaceholder="Search tags…"
+          groups={[
+            { options: [{ value: "", label: "All tags" }] },
+            ...(["TAG", "MISTAKE", "EMOTION"] as const)
+              .map((kind) => ({
+                heading: kind === "TAG" ? "Tags" : kind === "MISTAKE" ? "Mistakes" : "Emotions",
+                options: options.tags.filter((t) => t.kind === kind).map((t) => ({ value: t.id, label: t.name })),
+              }))
+              .filter((g) => g.options.length > 0),
+          ]}
+        />
       )}
       {options.setups.length > 0 && (
-        <Select aria-label="Setup" value={filters.setup ?? ""} onChange={(e) => update({ setup: e.target.value || undefined })} className="h-9 w-auto">
-          <option value="">All setups</option>
-          {options.setups.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
+        <Combobox
+          aria-label="Setup"
+          value={filters.setup ?? ""}
+          onValueChange={(v) => update({ setup: v || undefined })}
+          className="h-9 w-auto max-w-56"
+          searchPlaceholder="Search setups…"
+          options={[{ value: "", label: "All setups" }, ...options.setups.map((s) => ({ value: s.id, label: s.name }))]}
+        />
       )}
       <div className="flex items-center gap-1.5">
         <Input

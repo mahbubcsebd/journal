@@ -12,7 +12,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Field, Input } from "@/components/ui/input";
 import type { TradingAccount } from "@/db/schema";
 import { ACCOUNT_COLORS, EXNESS_ACCOUNT_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -87,19 +88,23 @@ function AccountForm({ account, onDone }: { account?: TradingAccount; onDone: ()
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Account type" htmlFor="accountType" error={err("accountType")}>
-          <Select id="accountType" name="accountType" defaultValue={account?.accountType ?? "Standard"}>
-            {EXNESS_ACCOUNT_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </Select>
+          <Combobox
+            id="accountType"
+            name="accountType"
+            defaultValue={account?.accountType ?? "Standard"}
+            options={EXNESS_ACCOUNT_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          />
         </Field>
         <Field label="Real or demo" htmlFor="environment">
-          <Select id="environment" name="environment" defaultValue={account?.environment ?? "REAL"}>
-            <option value="REAL">Real</option>
-            <option value="DEMO">Demo</option>
-          </Select>
+          <Combobox
+            id="environment"
+            name="environment"
+            defaultValue={account?.environment ?? "REAL"}
+            options={[
+              { value: "REAL", label: "Real" },
+              { value: "DEMO", label: "Demo" },
+            ]}
+          />
         </Field>
       </div>
       <Field

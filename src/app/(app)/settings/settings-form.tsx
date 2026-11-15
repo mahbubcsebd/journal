@@ -7,7 +7,8 @@ import { useActionState, useEffect, useState, useSyncExternalStore, useTransitio
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Field, Input } from "@/components/ui/input";
 import { COMMON_TIMEZONES, CURRENCIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { deleteMyAccount, saveNotificationSettings, saveProfile, sendWeeklyReportNow, type ProfileState } from "@/server/actions/profile";
@@ -45,28 +46,35 @@ export function SettingsForm(props: {
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Timezone" htmlFor="timezone" hint="Trading days are grouped in this timezone.">
-                <Select id="timezone" name="timezone" defaultValue={props.timezone}>
-                  {zones.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz.replace("_", " ")}
-                    </option>
-                  ))}
-                </Select>
+                <Combobox
+                  id="timezone"
+                  name="timezone"
+                  defaultValue={props.timezone}
+                  searchPlaceholder="Search timezones…"
+                  options={zones.map((tz) => ({ value: tz, label: tz.replaceAll("_", " ") }))}
+                />
               </Field>
               <Field label="Display currency" htmlFor="baseCurrency">
-                <Select id="baseCurrency" name="baseCurrency" defaultValue={props.baseCurrency}>
-                  {CURRENCIES.map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </Select>
+                <Combobox
+                  id="baseCurrency"
+                  name="baseCurrency"
+                  defaultValue={props.baseCurrency}
+                  options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                />
               </Field>
             </div>
             <Field label="Week starts on" htmlFor="weekStartsOn" hint="Used by the calendar and weekly reports.">
-              <Select id="weekStartsOn" name="weekStartsOn" defaultValue={String(props.weekStartsOn)} className="sm:w-1/2">
-                <option value="1">Monday</option>
-                <option value="0">Sunday</option>
-                <option value="6">Saturday</option>
-              </Select>
+              <Combobox
+                id="weekStartsOn"
+                name="weekStartsOn"
+                defaultValue={String(props.weekStartsOn)}
+                className="sm:w-1/2"
+                options={[
+                  { value: "1", label: "Monday" },
+                  { value: "0", label: "Sunday" },
+                  { value: "6", label: "Saturday" },
+                ]}
+              />
             </Field>
             <Button type="submit" disabled={pending} className="w-fit">
               {pending && <Loader2 className="animate-spin" />}

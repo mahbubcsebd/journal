@@ -2,13 +2,14 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronLeft, ChevronRight, ImagePlus, Loader2, Trash2, X } from "lucide-react";
-import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { deleteTradeImage, updateImageCaption, uploadTradeImages } from "@/server/actions/trade-images";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Img = { id: string; caption: string | null };
 
@@ -18,7 +19,6 @@ export function TradeImages({ tradeId, initial }: { tradeId: string; initial: Im
   const [dragging, setDragging] = useState(false);
   const [uploading, startUpload] = useTransition();
   const input = useRef<HTMLInputElement>(null);
-  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   const upload = (files: File[]) => {
     const imgs = files.filter((f) => f.type.startsWith("image/"));
@@ -128,27 +128,22 @@ export function TradeImages({ tradeId, initial }: { tradeId: string; initial: Im
         )}
       </div>
 
-      {mounted &&
-        createPortal(
-          <AnimatePresence>
-            {open != null && images[open] && (
-              <Lightbox
-                key="lightbox"
-                tradeId={tradeId}
-                images={images}
-                index={open}
-                onIndex={setOpen}
-                onClose={() => setOpen(null)}
-                onCaption={(id, caption) => setImages((all) => all.map((x) => (x.id === id ? { ...x, caption } : x)))}
-                onDeleted={(id) => {
-                  setImages((all) => all.filter((x) => x.id !== id));
-                  setOpen(null);
-                }}
-              />
-            )}
-          </AnimatePresence>,
-          document.body,
+      <Dialog open={open != null && Boolean(images[open])} onOpenChange={(o) => !o && setOpen(null)}>
+        {open != null && images[open] && (
+          <Lightbox
+            tradeId={tradeId}
+            images={images}
+            index={open}
+            onIndex={setOpen}
+            onClose={() => setOpen(null)}
+            onCaption={(id, caption) => setImages((all) => all.map((x) => (x.id === id ? { ...x, caption } : x)))}
+            onDeleted={(id) => {
+              setImages((all) => all.filter((x) => x.id !== id));
+              setOpen(null);
+            }}
+          />
         )}
+      </Dialog>
     </Card>
   );
 }
@@ -170,11 +165,11 @@ function Lightbox({
   onCaption: (id: string, caption: string | null) => void;
   onDeleted: (id: string) => void;
 }) {
+  const confirm = useConfirm();
   const img = images[index];
   const [, start] = useTransition();
   const onKey = useEffectEvent((e: KeyboardEvent) => {
     if ((e.target as HTMLElement)?.tagName === "INPUT") return;
-    if (e.key === "Escape") onClose();
     if (e.key === "ArrowLeft" && index > 0) onIndex(index - 1);
     if (e.key === "ArrowRight" && index < images.length - 1) onIndex(index + 1);
   });
@@ -185,15 +180,12 @@ function Lightbox({
   }, []);
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50 flex flex-col bg-black/85 backdrop-blur-sm"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Screenshot"
+    <DialogContent
+      showCloseButton={false}
+      aria-describedby={undefined}
+      className="inset-0 top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-black/85 p-0 text-white shadow-none backdrop-blur-sm data-[state=open]:animate-[fade-in_150ms_ease-out] data-[state=closed]:animate-[fade-out_120ms_ease-in]"
     >
+      <DialogTitle className="sr-only">{img.caption ?? "Screenshot"}</DialogTitle>
       <div className="flex items-center gap-2 p-3 text-white">
         <span className="text-sm tabular opacity-70">
           {index + 1} / {images.length}
@@ -216,8 +208,8 @@ function Lightbox({
           type="button"
           aria-label="Delete screenshot"
           className="rounded-lg p-2 text-white/80 transition hover:bg-white/10 hover:text-white"
-          onClick={() => {
-            if (!confirm("Delete this screenshot?")) return;
+          onClick={async () => {
+            if (!(await confirm({ title: "Delete this screenshot?", destructive: true }))) return;
             start(async () => {
               await deleteTradeImage(tradeId, img.id);
               onDeleted(img.id);
@@ -271,6 +263,6 @@ function Lightbox({
           </button>
         )}
       </div>
-    </motion.div>
+    </DialogContent>
   );
 }

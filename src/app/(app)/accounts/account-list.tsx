@@ -20,6 +20,7 @@ import { disconnectAccount, syncAccountNow } from "@/server/actions/sync";
 import { ConnectDialog, type KeyInfo } from "./connect-dialog";
 import { archiveAccount, deleteAccount } from "@/server/actions/accounts";
 import { AccountDialog } from "./account-dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const STATUS: Record<TradingAccount["status"], { label: string; variant: "profit" | "loss" | "warning" | "default" }> = {
   CONNECTED: { label: "Connected", variant: "profit" },
@@ -56,6 +57,7 @@ export function AccountList({
   origin: string;
   metaApi: boolean;
 }) {
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<TradingAccount | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -119,8 +121,13 @@ export function AccountList({
                       </DropdownMenuItem>
                       {(a.syncMethod === "EA" || a.syncMethod === "METAAPI") && (
                         <DropdownMenuItem
-                          onSelect={() => {
-                            if (!confirm(`Stop auto-sync for ${a.nickname}? Trades already synced stay in your journal.`)) return;
+                          onSelect={async () => {
+                            const ok = await confirm({
+                              title: `Stop auto-sync for ${a.nickname}?`,
+                              description: "Trades already synced stay in your journal.",
+                              confirmLabel: "Stop auto-sync",
+                            });
+                            if (!ok) return;
                             startTransition(async () => {
                               await disconnectAccount(a.id);
                               toast.success("Auto-sync stopped");
@@ -143,8 +150,12 @@ export function AccountList({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-loss [&_svg]:!text-loss"
-                        onSelect={() => {
-                          if (!confirm(`Delete ${a.nickname} and all of its trades? This cannot be undone.`)) return;
+                        onSelect={async () => {
+                          const ok = await confirm({
+                            title: `Delete ${a.nickname}?`,
+                            description: "All of its trades are deleted too. This cannot be undone.", destructive: true,
+                          });
+                          if (!ok) return;
                           startTransition(async () => {
                             await deleteAccount(a.id);
                             toast.success(`${a.nickname} deleted`);

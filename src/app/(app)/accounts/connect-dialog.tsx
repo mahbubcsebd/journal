@@ -11,6 +11,7 @@ import type { TradingAccount } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { createSyncKey, revokeSyncKey } from "@/server/actions/sync-keys";
 import { connectMetaApiAccount } from "@/server/actions/sync";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 export type KeyInfo = { id: string; name: string; prefix: string; lastUsedAt: string | null; revoked: boolean };
 
@@ -39,6 +40,7 @@ export function ConnectDialog({
   metaApi: boolean;
   trigger: React.ReactNode;
 }) {
+  const confirm = useConfirm();
   const [tab, setTab] = useState<"ea" | "metaapi">(account.syncMethod === "METAAPI" ? "metaapi" : "ea");
   const [key, setKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -188,7 +190,10 @@ export function ConnectDialog({
                   <button
                     type="button"
                     className="ml-auto inline-flex items-center gap-1 rounded p-1 text-muted-foreground hover:bg-loss-soft hover:text-loss"
-                    onClick={() => confirm("Revoke this key? EAs using it will stop syncing.") && start(() => revokeSyncKey(k.id))}
+                    onClick={async () =>
+                      (await confirm({ title: "Revoke this key?", description: "EAs using it will stop syncing.", confirmLabel: "Revoke", destructive: true })) &&
+                      start(() => revokeSyncKey(k.id))
+                    }
                   >
                     <Trash2 className="size-3.5" /> Revoke
                   </button>

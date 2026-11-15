@@ -1,13 +1,13 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { Suspense, useState } from "react";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { NAV } from "./nav-config";
 
@@ -90,49 +90,22 @@ export function Sidebar() {
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
-  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-  }, [open]);
-
   return (
-    <>
-      <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu" onClick={() => setOpen(true)}>
-        <Menu />
-      </Button>
-      {mounted &&
-        createPortal(
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] lg:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-            />
-            <motion.aside
-              className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-sidebar shadow-pop lg:hidden"
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 420, damping: 40 }}
-            >
-              <div className="flex h-16 items-center px-5">
-                <Logo />
-              </div>
-              <div className="flex-1 overflow-y-auto px-3 pb-6">
-                <NavList layoutKey="mobile" onNavigate={() => setOpen(false)} />
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>,
-          // Portal out of the sticky header: its backdrop-filter would otherwise
-          // become the containing block for these fixed-position elements.
-          document.body,
-        )}
-    </>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">
+          <Menu />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="bg-sidebar lg:hidden" aria-describedby={undefined}>
+        <SheetTitle className="sr-only">Menu</SheetTitle>
+        <div className="flex h-16 items-center px-5">
+          <Logo />
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 pb-6">
+          <NavList layoutKey="mobile" onNavigate={() => setOpen(false)} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

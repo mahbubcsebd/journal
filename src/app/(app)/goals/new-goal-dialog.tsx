@@ -5,7 +5,8 @@ import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { Field, Input } from "@/components/ui/input";
 import { GOAL_METRICS, PERIOD_LABEL, type GoalMetric } from "@/lib/goals";
 import { cn } from "@/lib/utils";
 import { createGoal, type GoalFormState } from "@/server/actions/goals";
@@ -92,14 +93,12 @@ function GoalForm({ accounts, onDone }: { accounts: { id: string; label: string 
           <Input id="target" name="target" type="number" step={meta.unit === "money" ? "0.01" : "1"} min="0" required placeholder={meta.unit === "money" ? "100" : meta.unit === "percent" ? "55" : "3"} />
         </Field>
         <Field label="Applies to" htmlFor="accountId" error={err("accountId")} hint="Cent amounts are converted to USD when combined.">
-          <Select id="accountId" name="accountId" defaultValue="all">
-            <option value="all">All accounts</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </Select>
+          <Combobox
+            id="accountId"
+            name="accountId"
+            defaultValue="all"
+            options={[{ value: "all", label: "All accounts" }, ...accounts.map((a) => ({ value: a.id, label: a.label }))]}
+          />
         </Field>
       </div>
       <Button type="submit" disabled={pending}>

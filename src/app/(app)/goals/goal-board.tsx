@@ -11,6 +11,7 @@ import { GOAL_METRICS, PERIOD_LABEL, type GoalStatus } from "@/lib/goals";
 import { cn } from "@/lib/utils";
 import { deleteGoal, setGoalActive } from "@/server/actions/goals";
 import type { GoalView } from "@/server/queries/goals";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const STATUS: Record<GoalStatus, { label: string; variant: "profit" | "loss" | "warning" | "default" | "brand" }> = {
   hit: { label: "Reached", variant: "profit" },
@@ -28,6 +29,7 @@ function barColor(status: GoalStatus, kind: "target" | "limit") {
 }
 
 export function GoalBoard({ goals }: { goals: GoalView[] }) {
+  const confirm = useConfirm();
   const [, start] = useTransition();
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -59,7 +61,7 @@ export function GoalBoard({ goals }: { goals: GoalView[] }) {
                       <DropdownMenuItem onSelect={() => start(() => setGoalActive(g.id, !g.active))}>
                         {g.active ? <Pause /> : <Play />} {g.active ? "Pause" : "Resume"}
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-loss [&_svg]:!text-loss" onSelect={() => confirm("Delete this goal?") && start(() => deleteGoal(g.id))}>
+                      <DropdownMenuItem className="text-loss [&_svg]:!text-loss" onSelect={async () => (await confirm({ title: "Delete this goal?", destructive: true })) && start(() => deleteGoal(g.id))}>
                         <Trash2 /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>

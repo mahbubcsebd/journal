@@ -157,8 +157,31 @@
 @keyframes menu-in {
   from { opacity: 0; transform: scale(0.96) translateY(-2px); }
 }
+/* Tailwind v4 centres dialogs with the `translate` property, so these only
+   animate `transform` (they compose instead of fighting). */
 @keyframes dialog-in {
-  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+@keyframes menu-out {
+  to { opacity: 0; transform: scale(0.97); }
+}
+@keyframes dialog-out {
+  to { opacity: 0; transform: translateY(4px) scale(0.98); }
+}
+@keyframes sheet-in-right {
+  from { transform: translateX(100%); }
+}
+@keyframes sheet-out-right {
+  to { transform: translateX(100%); }
+}
+@keyframes sheet-in-left {
+  from { transform: translateX(-100%); }
+}
+@keyframes sheet-out-left {
+  to { transform: translateX(-100%); }
 }
 
 /* Reports → "PDF" uses the browser's print-to-PDF: hide app chrome, keep colours. */

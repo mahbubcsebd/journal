@@ -16,6 +16,7 @@ import type { DocNode } from "@/lib/doc";
 import { BIAS, MOODS } from "@/lib/journal";
 import { cn } from "@/lib/utils";
 import { deleteJournal, saveChecklistTemplate, saveJournal, type JournalInput } from "@/server/actions/journal";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type State = JournalInput;
 
@@ -49,6 +50,7 @@ export function JournalEditor({
   checklistTemplate: string[];
   exists: boolean;
 }) {
+  const confirm = useConfirm();
   const router = useRouter();
   const [v, setV] = useState<State>(initial);
   const [template, setTemplate] = useState(checklistTemplate);
@@ -219,8 +221,8 @@ export function JournalEditor({
             variant="ghost"
             size="sm"
             className="text-loss hover:bg-loss-soft hover:text-loss"
-            onClick={() => {
-              if (!confirm("Delete this journal entry?")) return;
+            onClick={async () => {
+              if (!(await confirm({ title: "Delete this journal entry?", destructive: true }))) return;
               start(async () => {
                 await deleteJournal(day);
                 toast.success("Entry deleted");

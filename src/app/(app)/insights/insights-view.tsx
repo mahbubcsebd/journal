@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import type { Review } from "@/lib/ai/schemas";
 import { cn, formatDateTime, formatMoney } from "@/lib/utils";
 import { deleteInsight, generateReview, type ReviewPreset } from "@/server/actions/insights";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 export type InsightItem = {
   id: string;
@@ -48,6 +49,7 @@ export function InsightsView({
   language: "en" | "bn";
   timezone: string;
 }) {
+  const confirm = useConfirm();
   const router = useRouter();
   const [preset, setPreset] = useState<ReviewPreset>("last_week");
   const [language, setLanguage] = useState(initialLanguage);
@@ -185,7 +187,7 @@ export function InsightsView({
               <button
                 type="button"
                 aria-label="Delete review"
-                onClick={() => confirm("Delete this review?") && start(() => deleteInsight(i.id))}
+                onClick={async () => (await confirm({ title: "Delete this review?", destructive: true })) && start(() => deleteInsight(i.id))}
                 className="absolute top-2.5 right-2 rounded p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-loss-soft hover:text-loss focus:opacity-100"
               >
                 <Trash2 className="size-3.5" />
