@@ -45,6 +45,23 @@ export async function POST(request: Request) {
     .where(and(eq(tradingAccount.userId, key.userId), eq(tradingAccount.login, p.login), eq(tradingAccount.server, p.server)))
     .limit(1);
   if (!account) {
+    // The user may have typed the server slightly differently when adding the
+    // account by hand (e.g. "Exness-MT5Real8" vs "Exness-MT5Real"). A login is
+    // unique at the broker, so if exactly one account has it, adopt the EA's
+    // server name instead of creating a duplicate sub-account.
+    const sameLogin = await db
+      .select()
+      .from(tradingAccount)
+      .where(and(eq(tradingAccount.userId, key.userId), eq(tradingAccount.login, p.login)));
+    if (sameLogin.length === 1) {
+      [account] = await db
+        .update(tradingAccount)
+        .set({ server: p.server })
+        .where(eq(tradingAccount.id, sameLogin[0].id))
+        .returning();
+    }
+  }
+  if (!account) {
     const cent = p.currency.toUpperCase() === "USC";
     [account] = await db
       .insert(tradingAccount)
