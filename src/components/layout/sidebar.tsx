@@ -1,13 +1,10 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { Logo } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { NAV } from "./nav-config";
 
@@ -17,7 +14,7 @@ type NavListProps = { layoutKey: string; onNavigate?: () => void };
  * On dynamic routes the pathname is request data, so the active state streams
  * in behind Suspense; the fallback renders the same list with nothing active.
  */
-function NavList(props: NavListProps) {
+export function NavList(props: NavListProps) {
   return (
     <Suspense fallback={<NavLinks {...props} pathname={null} />}>
       <ActiveNavLinks {...props} />
@@ -85,27 +82,5 @@ export function Sidebar() {
         <NavList layoutKey="desktop" />
       </div>
     </aside>
-  );
-}
-
-export function MobileNav() {
-  const [open, setOpen] = useState(false);
-  return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">
-          <Menu />
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="bg-sidebar lg:hidden" aria-describedby={undefined}>
-        <SheetTitle className="sr-only">Menu</SheetTitle>
-        <div className="flex h-16 items-center px-5">
-          <Logo />
-        </div>
-        <div className="flex-1 overflow-y-auto px-3 pb-6">
-          <NavList layoutKey="mobile" onNavigate={() => setOpen(false)} />
-        </div>
-      </SheetContent>
-    </Sheet>
   );
 }

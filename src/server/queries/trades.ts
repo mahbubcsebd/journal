@@ -17,6 +17,8 @@ function where(userId: string, accountIds: string[], f: Omit<TradeFilters, "page
     f.status ? eq(trade.status, f.status) : undefined,
     f.session ? eq(trade.session, f.session as never) : undefined,
     f.source ? eq(trade.source, f.source as never) : undefined,
+    // Results only make sense for closed trades (an open one sits at 0).
+    f.result ? eq(trade.status, "CLOSED") : undefined,
     f.result === "win" ? gt(trade.netPnl, 0) : undefined,
     f.result === "loss" ? lt(trade.netPnl, 0) : undefined,
     f.result === "be" ? eq(trade.netPnl, 0) : undefined,

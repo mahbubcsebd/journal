@@ -23,6 +23,7 @@ import { NOTE_TEMPLATES } from "@/lib/note-templates";
 import { cn, formatDateTime } from "@/lib/utils";
 import { createNote, deleteNote, updateNote } from "@/server/actions/notes";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { Combobox } from "@/components/ui/combobox";
 
 type Note = {
   id: string;
@@ -163,19 +164,15 @@ function NoteEditor({ note, folders, onBack }: { note: Note; folders: string[]; 
           <Button variant="ghost" size="icon-sm" className="lg:hidden" aria-label="Back to notes" onClick={onBack}>
             <ArrowLeft />
           </Button>
-          <Input
-            list="note-folders"
-            value={folder}
-            onChange={(e) => setFolder(e.target.value)}
-            onBlur={(e) => !e.target.value.trim() && setFolder("General")}
+          <Combobox
             aria-label="Folder"
+            value={folder}
+            onValueChange={(f) => setFolder(f || "General")}
             className="h-8 w-36 text-xs"
+            searchPlaceholder="Search or name a folder…"
+            allowCustom
+            options={[...new Set([...folders, "General", "Ideas", "Research", "Reviews", "Lessons"])].map((f) => ({ value: f, label: f }))}
           />
-          <datalist id="note-folders">
-            {[...new Set([...folders, "General", "Ideas", "Research", "Reviews", "Lessons"])].map((f) => (
-              <option key={f} value={f} />
-            ))}
-          </datalist>
           <div className="flex-1" />
           <SaveIndicator status={status} />
           <Button

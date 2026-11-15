@@ -12,6 +12,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <DialogsProvider>{children}</DialogsProvider>
         <Toaster
           position="bottom-right"
+          // Above the mobile tab bar.
+          mobileOffset={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
           toastOptions={{
             classNames: {
               toast: "!rounded-xl !border !border-border !bg-popover !text-foreground !shadow-pop",

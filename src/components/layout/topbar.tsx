@@ -4,14 +4,12 @@ import { getCurrentUser, getSelectedAccountIds, getUserAccounts } from "@/lib/se
 import { todayIn } from "@/lib/dates";
 import { AccountSwitcher } from "./account-switcher";
 import { CommandMenu } from "./command-menu";
-import { MobileNav } from "./sidebar";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
 export function Topbar() {
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-2 border-b bg-background/75 px-4 backdrop-blur-xl sm:px-6">
-      <MobileNav />
+    <header className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-2 border-b bg-background/75 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:px-6 lg:h-16 print:hidden">
       <Suspense fallback={<Skeleton className="h-9 w-40 rounded-lg" />}>
         <AccountSwitcherSlot />
       </Suspense>

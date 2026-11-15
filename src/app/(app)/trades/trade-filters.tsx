@@ -60,23 +60,16 @@ export function TradeFiltersBar({ filters, options }: { filters: TradeFilters; o
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          key={filters.symbol ?? ""}
-          defaultValue={filters.symbol}
-          list="trade-symbols"
-          placeholder="Symbol"
-          className="h-9 w-36 pl-8"
-          onKeyDown={(e) => e.key === "Enter" && update({ symbol: e.currentTarget.value || undefined })}
-          onBlur={(e) => e.currentTarget.value !== (filters.symbol ?? "") && update({ symbol: e.currentTarget.value || undefined })}
-        />
-        <datalist id="trade-symbols">
-          {options.symbols.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-      </div>
+      <Combobox
+        aria-label="Symbol"
+        value={filters.symbol ?? ""}
+        onValueChange={(v) => update({ symbol: v || undefined })}
+        className="h-9 w-36"
+        searchPlaceholder="Search or type a symbol…"
+        allowCustom
+        format={(s) => s.trim().toUpperCase().replace(/\s+/g, "")}
+        options={[{ value: "", label: "All symbols", icon: <Search className="size-4 text-muted-foreground" /> }, ...options.symbols.map((s) => ({ value: s, label: s }))]}
+      />
       <Segmented
         value={filters.side}
         onChange={(side) => update({ side })}
@@ -84,6 +77,15 @@ export function TradeFiltersBar({ filters, options }: { filters: TradeFilters; o
           { value: undefined, label: "All" },
           { value: "LONG", label: "Long" },
           { value: "SHORT", label: "Short" },
+        ]}
+      />
+      <Segmented
+        value={filters.status}
+        onChange={(status) => update({ status })}
+        options={[
+          { value: undefined, label: "All" },
+          { value: "OPEN", label: "Open" },
+          { value: "CLOSED", label: "Closed" },
         ]}
       />
       <Segmented

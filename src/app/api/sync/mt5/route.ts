@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { after } from "next/server";
 import { db } from "@/db";
 import { syncKey, tradingAccount, user } from "@/db/schema";
+import { defaultAccountName } from "@/lib/account-name";
 import { userForKey } from "@/lib/sync/keys";
 import { fromEaDeal, fromEaPosition, parseEaPayload } from "@/lib/sync/map";
 import { ingestDeals } from "@/server/services/ingest";
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
         userId: key.userId,
         login: p.login,
         server: p.server,
-        nickname: `${cent ? "Cent" : "MT5"} #${p.login}`,
+        nickname: defaultAccountName(p.login, { cent, demo: p.trade_mode === 0 }),
         currency: p.currency || "USD",
         accountType: cent ? "Standard Cent" : "Standard",
         environment: p.trade_mode === 0 ? "DEMO" : "REAL",

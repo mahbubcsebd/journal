@@ -19,6 +19,14 @@ import { ACCOUNT_COLORS, EXNESS_ACCOUNT_TYPES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { saveAccount, type AccountFormState } from "@/server/actions/accounts";
 
+
+const EXNESS_SERVERS = [
+  "Exness-MT5Real",
+  ...Array.from({ length: 30 }, (_, i) => `Exness-MT5Real${i + 2}`),
+  "Exness-MT5Trial",
+  ...Array.from({ length: 15 }, (_, i) => `Exness-MT5Trial${i + 2}`),
+];
+
 export function AccountDialog({
   account,
   open: controlledOpen,
@@ -78,12 +86,16 @@ function AccountForm({ account, onDone }: { account?: TradingAccount; onDone: ()
           <Input id="login" name="login" inputMode="numeric" defaultValue={account?.login} placeholder="12345678" required />
         </Field>
         <Field label="Server" htmlFor="server" error={err("server")}>
-          <Input id="server" name="server" list="exness-servers" defaultValue={account?.server} placeholder="Exness-MT5Real8" required />
-          <datalist id="exness-servers">
-            {["Exness-MT5Real", ...Array.from({ length: 30 }, (_, i) => `Exness-MT5Real${i + 2}`), "Exness-MT5Trial", ...Array.from({ length: 15 }, (_, i) => `Exness-MT5Trial${i + 2}`)].map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
+          <Combobox
+            id="server"
+            name="server"
+            defaultValue={account?.server ?? ""}
+            placeholder="Exness-MT5Real8"
+            searchPlaceholder="Search or type the server…"
+            allowCustom
+            format={(s) => s.trim().replace(/\s+/g, "")}
+            options={EXNESS_SERVERS.map((s) => ({ value: s, label: s }))}
+          />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">

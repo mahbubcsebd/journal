@@ -55,12 +55,15 @@ function Result({ label, value, big, tone }: { label: string; value: string; big
 function SymbolInput({ value, onChange, id }: { value: string; onChange: (v: string) => void; id: string }) {
   return (
     <>
-      <Input id={id} value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} list="risk-symbols" className="uppercase" />
-      <datalist id="risk-symbols">
-        {SYMBOLS.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
+      <Combobox
+        id={id}
+        value={value}
+        onValueChange={onChange}
+        searchPlaceholder="Search or type a symbol…"
+        allowCustom
+        format={(s) => s.trim().toUpperCase().replace(/\s+/g, "")}
+        options={SYMBOLS.map((s) => ({ value: s, label: s }))}
+      />
     </>
   );
 }

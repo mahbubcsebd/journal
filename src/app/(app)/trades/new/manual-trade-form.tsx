@@ -50,12 +50,15 @@ export function ManualTradeForm({
             />
           </Field>
           <Field label="Symbol" htmlFor="symbol" error={err("symbol")}>
-            <Input id="symbol" name="symbol" list="symbols" placeholder="XAUUSD" required className="uppercase" />
-            <datalist id="symbols">
-              {SYMBOLS.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
+            <Combobox
+              id="symbol"
+              name="symbol"
+              placeholder="XAUUSD"
+              searchPlaceholder="Search or type a symbol…"
+              allowCustom
+              format={(s) => s.trim().toUpperCase().replace(/\s+/g, "")}
+              options={SYMBOLS.map((s) => ({ value: s, label: s }))}
+            />
           </Field>
           <div className="grid gap-1.5">
             <span className="text-[13px] font-medium">Direction</span>

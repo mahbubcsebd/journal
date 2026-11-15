@@ -23,7 +23,9 @@ src/components/ui (shadcn/ui pattern, Radix + cmdk): button, card, badge, input,
 - Focus ring: global `:focus-visible` outline using `--ring`.
 - Dark mode: always define both token sets; test both.
 
-- Every select is the shadcn `Combobox` (components/ui/combobox.tsx); in a plain form pass `name` + `defaultValue`. Never use a native `<select>`.
+- Every select is the shadcn `Combobox` (components/ui/combobox.tsx); in a plain form pass `name` + `defaultValue`. Never use a native `<select>` or `<datalist>` (phones show datalists above the keyboard); for free text with suggestions use `Combobox allowCustom`.
+- Pickers open through `ResponsivePopover`: a popover on desktop, a bottom sheet on phones that doesn't focus the search box (no keyboard until tapped).
+- Mobile: app shell has a bottom tab bar (components/layout/bottom-nav.tsx); pad for `env(safe-area-inset-*)`; inputs are 16px on phones so iOS doesn't zoom.
 - Every popup is the shadcn `Dialog` (side drawers use `Sheet`, which is the same Radix Dialog). Confirmations use `useConfirm()` / `usePrompt()` from confirm-dialog.tsx, never `window.confirm()` / `window.prompt()`.
 
 ## Don'ts

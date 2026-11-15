@@ -2,7 +2,7 @@
 
 import { Check, ChevronsUpDown, Layers, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import { useId, useOptimistic, useState, useTransition } from "react";
 import {
   Command,
   CommandEmpty,
@@ -12,7 +12,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ResponsivePopover } from "@/components/ui/responsive-popover";
 import { cn } from "@/lib/utils";
 import { setAccountFilter } from "@/server/actions/account-filter";
 
@@ -36,6 +36,7 @@ export function AccountSwitcher({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const listId = useId();
   const [pending, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic({ selected, isAll });
 
@@ -70,25 +71,34 @@ export function AccountSwitcher({
         : `${optimistic.selected.length} accounts`;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        role="combobox"
-        aria-expanded={open}
-        aria-label="Accounts shown"
-        className={cn(
-          "inline-flex h-9 max-w-[220px] items-center gap-2 rounded-lg border bg-card px-2.5 text-[13px] font-medium shadow-xs transition outline-none hover:bg-accent focus-visible:ring-4 focus-visible:ring-ring/15",
-          pending && "opacity-70",
-        )}
-      >
-        {single ? (
-          <span className="size-2.5 shrink-0 rounded-full" style={{ background: single.color }} />
-        ) : (
-          <Layers className="size-4 text-muted-foreground" />
-        )}
-        <span className="truncate">{label}</span>
-        <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-0">
+    <ResponsivePopover
+      open={open}
+      onOpenChange={setOpen}
+      title="Show data from"
+      id={listId}
+      className="w-72"
+      trigger={
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          aria-label="Accounts shown"
+          className={cn(
+            "inline-flex h-9 max-w-[220px] items-center gap-2 rounded-lg border bg-card px-2.5 text-[13px] font-medium shadow-xs transition outline-none hover:bg-accent focus-visible:ring-4 focus-visible:ring-ring/15",
+            pending && "opacity-70",
+          )}
+        >
+          {single ? (
+            <span className="size-2.5 shrink-0 rounded-full" style={{ background: single.color }} />
+          ) : (
+            <Layers className="size-4 text-muted-foreground" />
+          )}
+          <span className="truncate">{label}</span>
+          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+        </button>
+      }
+    >
         <Command loop>
           {accounts.length > 5 && <CommandInput placeholder="Search accounts…" />}
           <CommandList className="max-h-80">
@@ -178,7 +188,6 @@ export function AccountSwitcher({
             </CommandGroup>
           </CommandList>
         </Command>
-      </PopoverContent>
-    </Popover>
+    </ResponsivePopover>
   );
 }

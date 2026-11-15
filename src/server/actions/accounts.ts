@@ -80,3 +80,18 @@ export async function deleteAccount(id: string) {
   await db.delete(tradingAccount).where(and(eq(tradingAccount.id, id), eq(tradingAccount.userId, u.id)));
   revalidatePath("/", "layout");
 }
+
+const renameSchema = z.object({ id: z.string().min(1), nickname: z.string().trim().min(1, "Give this account a name").max(40) });
+
+/** Rename an account in place (from the account card). */
+export async function renameAccount(id: string, nickname: string) {
+  const u = await userOrRedirect();
+  const data = renameSchema.safeParse({ id, nickname });
+  if (!data.success) return { ok: false as const, error: data.error.issues[0]?.message ?? "Invalid name" };
+  await db
+    .update(tradingAccount)
+    .set({ nickname: data.data.nickname })
+    .where(and(eq(tradingAccount.id, data.data.id), eq(tradingAccount.userId, u.id)));
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}

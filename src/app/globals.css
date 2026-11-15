@@ -112,6 +112,9 @@
     border-color: var(--color-border);
   }
   html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -125,9 +128,32 @@
   ::selection {
     background: color-mix(in oklch, var(--brand) 30%, transparent);
   }
+  a,
+  button,
+  [role="button"],
+  label {
+    touch-action: manipulation; /* no double-tap zoom delay */
+  }
+  /* iOS zooms into inputs under 16px; keep phones from jumping on focus. */
+  @media (max-width: 767px) {
+    input:not([type="checkbox"], [type="radio"], [type="range"]),
+    textarea,
+    [cmdk-input] {
+      font-size: 16px !important;
+    }
+  }
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+}
+
+/* Grid items default to min-width: auto, so one wide table (open positions,
+   breakdowns) widened the whole page column on phones. Let them shrink; the
+   tables scroll inside their own card. */
+@layer base {
+  main .grid > * {
+    min-width: 0;
   }
 }
 
@@ -176,6 +202,12 @@
 }
 @keyframes sheet-out-right {
   to { transform: translateX(100%); }
+}
+@keyframes sheet-in-bottom {
+  from { transform: translateY(100%); }
+}
+@keyframes sheet-out-bottom {
+  to { transform: translateY(100%); }
 }
 @keyframes sheet-in-left {
   from { transform: translateX(-100%); }

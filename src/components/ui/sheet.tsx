@@ -19,6 +19,8 @@ const SheetClose = (props: React.ComponentProps<typeof DialogPrimitive.Close>) =
 const SIDE = {
   right:
     "inset-y-0 right-0 h-full w-full max-w-xl border-l data-[state=open]:animate-[sheet-in-right_260ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[sheet-out-right_180ms_ease-in]",
+  bottom:
+    "inset-x-0 bottom-0 max-h-[88dvh] rounded-t-2xl border-t data-[state=open]:animate-[sheet-in-bottom_280ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[sheet-out-bottom_180ms_ease-in]",
   left: "inset-y-0 left-0 h-full w-72 border-r data-[state=open]:animate-[sheet-in-left_260ms_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[sheet-out-left_180ms_ease-in]",
 } as const;
 
