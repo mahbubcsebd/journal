@@ -14,10 +14,11 @@ type Props = {
   weekStartsOn: WeekStart;
   byDay: Map<string, DailyPoint>;
   currency: string;
+  opened?: Record<string, { opened: number; running: number }>;
   onSelect: (day: string) => void;
 };
 
-export function YearView({ year, today, weekStartsOn, byDay, currency, onSelect }: Props) {
+export function YearView({ year, today, weekStartsOn, byDay, currency, opened = {}, onSelect }: Props) {
   const maxAbs = Math.max(0, ...[...byDay.values()].map((d) => Math.abs(d.net)));
   const labels = weekdayLabels(weekStartsOn, "narrow");
 
@@ -49,6 +50,7 @@ export function YearView({ year, today, weekStartsOn, byDay, currency, onSelect 
                   .flat()
                   .map((day) => {
                     const p = byDay.get(day);
+                    const o = opened[day];
                     const outside = !day.startsWith(month);
                     if (outside) return <span key={day} className="aspect-square" />;
                     return (
@@ -56,9 +58,11 @@ export function YearView({ year, today, weekStartsOn, byDay, currency, onSelect 
                         key={day}
                         type="button"
                         onClick={() => onSelect(day)}
-                        title={`${day}${p ? ` · ${formatMoney(p.net, currency, { sign: true })} · ${p.trades} trades` : ""}`}
+                        title={`${day}${p ? ` · ${formatMoney(p.net, currency, { sign: true })} · ${p.trades} closed` : ""}${o ? ` · ${o.opened} opened` : ""}`}
+                        aria-label={`${day}${p ? `: ${formatMoney(p.net, currency, { sign: true })}` : ""}${o ? `, ${o.opened} opened` : ""}`}
                         className={cn(
                           "aspect-square rounded-[5px] border bg-muted/40 transition hover:scale-110 hover:shadow-soft",
+                          !p && o && "border-brand/60 border-dashed",
                           day === today && "ring-2 ring-brand ring-offset-1 ring-offset-card",
                         )}
                         style={p ? pnlFill(p.net, maxAbs, 1.4) : undefined}

@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { dailyStat, trade, tradingAccount } from "@/db/schema";
+import { dailyStat, trade, tradingAccount, transaction } from "@/db/schema";
 import type { DailyPoint } from "@/lib/stats";
 import { getReportingCurrency } from "./stats";
 
@@ -64,6 +64,8 @@ export async function getClosedTrades(userId: string, accountIds: string[], from
       openTime: trade.openTime,
       closeTime: trade.closeTime,
       volume: trade.volume,
+      openPrice: trade.openPrice,
+      closePrice: trade.closePrice,
       netPnl: trade.netPnl,
       norm: sql<string>`${trade.netPnl} * ${usdScale(currency)}`,
       rMultiple: trade.rMultiple,
@@ -127,4 +129,95 @@ export async function getBreakdowns(userId: string, accountIds: string[], from: 
     symbols: symbols.map(norm).sort((a, b) => Math.abs(b.net) - Math.abs(a.net)),
     sides: sides.map(norm),
   };
+}
+
+export type OpenedTrade = Awaited<ReturnType<typeof getOpenedTrades>>[number];
+
+/**
+ * Live trades opened on the given day (user timezone), whether they closed the
+ * same day, later, or are still running.
+ */
+export async function getOpenedTrades(userId: string, accountIds: string[], day: string, tz: string) {
+  if (accountIds.length === 0) return [];
+  const rows = await db
+    .select({
+      id: trade.id,
+      symbol: trade.symbol,
+      side: trade.side,
+      status: trade.status,
+      openTime: trade.openTime,
+      closeTime: trade.closeTime,
+      openPrice: trade.openPrice,
+      closePrice: trade.closePrice,
+      volume: trade.volume,
+      netPnl: trade.netPnl,
+      sl: trade.sl,
+      tp: trade.tp,
+      currency: tradingAccount.currency,
+      accountName: tradingAccount.nickname,
+      accountColor: tradingAccount.color,
+      closeDay: sql<string | null>`to_char(${trade.closeTime} at time zone ${tz}, 'YYYY-MM-DD')`,
+    })
+    .from(trade)
+    .innerJoin(tradingAccount, eq(tradingAccount.id, trade.accountId))
+    .where(
+      and(
+        eq(trade.userId, userId),
+        inArray(trade.accountId, accountIds),
+        eq(trade.isBacktest, false),
+        sql`(${trade.openTime} at time zone ${tz})::date = ${day}::date`,
+      ),
+    )
+    .orderBy(asc(trade.openTime));
+  return rows;
+}
+
+/** Deposits, withdrawals and other balance operations on the given day. */
+export async function getDayTransactions(accountIds: string[], day: string, tz: string) {
+  if (accountIds.length === 0) return [];
+  return db
+    .select({
+      id: transaction.id,
+      type: transaction.type,
+      amount: transaction.amount,
+      comment: transaction.comment,
+      time: transaction.time,
+      currency: tradingAccount.currency,
+      accountName: tradingAccount.nickname,
+      accountColor: tradingAccount.color,
+    })
+    .from(transaction)
+    .innerJoin(tradingAccount, eq(tradingAccount.id, transaction.accountId))
+    .where(
+      and(inArray(transaction.accountId, accountIds), sql`(${transaction.time} at time zone ${tz})::date = ${day}::date`),
+    )
+    .orderBy(asc(transaction.time));
+}
+
+/**
+ * Per day: how many live trades were opened, and how many of those are still
+ * open. Lets the calendar mark days that have orders but no closed P&L yet.
+ */
+export async function getOpenedByDay(userId: string, accountIds: string[], from: string, to: string, tz: string) {
+  if (accountIds.length === 0) return {} as Record<string, { opened: number; running: number }>;
+  const day = sql<string>`to_char(${trade.openTime} at time zone ${tz}, 'YYYY-MM-DD')`;
+  const rows = await db
+    .select({
+      day,
+      opened: sql<string>`count(*)`,
+      running: sql<string>`count(*) filter (where ${trade.status} = 'OPEN')`,
+    })
+    .from(trade)
+    .where(
+      and(
+        eq(trade.userId, userId),
+        inArray(trade.accountId, accountIds),
+        eq(trade.isBacktest, false),
+        sql`(${trade.openTime} at time zone ${tz})::date between ${from}::date and ${to}::date`,
+      ),
+    )
+    // By position: the timezone is a bind parameter, so repeating the
+    // expression here would be a different parameter to Postgres.
+    .groupBy(sql`1`);
+  return Object.fromEntries(rows.map((r) => [r.day, { opened: Number(r.opened), running: Number(r.running) }]));
 }

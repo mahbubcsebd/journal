@@ -36,7 +36,7 @@ async function Day({ params }: { params: PageProps<"/calendar/[date]">["params"]
       </Link>
       <PageHeader
         title={formatDay(date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-        description="Every trade closed on this day, in your timezone."
+        description="Every order opened or closed on this day, plus deposits and withdrawals, in your timezone."
         actions={
           <>
             <Button asChild variant="outline" size="sm">

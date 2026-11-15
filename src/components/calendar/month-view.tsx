@@ -16,10 +16,11 @@ type Props = {
   byDay: Map<string, DailyPoint>;
   currency: string;
   journal?: Record<string, number | null>;
+  opened?: Record<string, { opened: number; running: number }>;
   onSelect: (day: string) => void;
 };
 
-export function MonthView({ anchor, today, weekStartsOn, byDay, currency, journal = {}, onSelect }: Props) {
+export function MonthView({ anchor, today, weekStartsOn, byDay, currency, journal = {}, opened = {}, onSelect }: Props) {
   const weeks = monthGrid(anchor, weekStartsOn);
   const month = anchor.slice(0, 7);
   const maxAbs = Math.max(0, ...weeks.flat().map((d) => (d.startsWith(month) ? Math.abs(byDay.get(d)?.net ?? 0) : 0)));
@@ -44,6 +45,7 @@ export function MonthView({ anchor, today, weekStartsOn, byDay, currency, journa
               const p = byDay.get(day);
               const outside = !day.startsWith(month);
               const decided = p ? p.wins + p.losses : 0;
+              const o = opened[day];
               return (
                 <motion.button
                   key={day}
@@ -53,7 +55,7 @@ export function MonthView({ anchor, today, weekStartsOn, byDay, currency, journa
                   transition={{ delay: (wi * 7 + di) * 0.008, duration: 0.25 }}
                   whileHover={{ y: -2 }}
                   onClick={() => onSelect(day)}
-                  aria-label={`${day}${p ? `: ${formatMoney(p.net, currency, { sign: true })}, ${p.trades} trades` : ": no trades"}`}
+                  aria-label={`${day}${p ? `: ${formatMoney(p.net, currency, { sign: true })}, ${p.trades} closed` : ": nothing closed"}${o ? `, ${o.opened} opened${o.running ? `, ${o.running} running` : ""}` : ""}`}
                   className={cn(
                     "group relative flex aspect-square flex-col rounded-lg border p-1.5 text-left transition-shadow hover:shadow-pop focus-visible:z-10 sm:aspect-[1.15] sm:rounded-xl sm:p-2.5 lg:aspect-[1.3]",
                     outside && "opacity-40",
@@ -66,12 +68,23 @@ export function MonthView({ anchor, today, weekStartsOn, byDay, currency, journa
                     <span className={cn("text-[11px] font-medium tabular sm:text-xs", day === today ? "text-brand-ink" : p && !outside ? "text-foreground/75" : "text-muted-foreground")}>
                       {Number(day.slice(8))}
                     </span>
+                    {o && o.running > 0 && (
+                      <span className="ml-auto mr-1 size-1.5 animate-pulse rounded-full bg-brand" title={`${o.running} running`} />
+                    )}
                     {day in journal && (
                       <span className="text-[11px] leading-none sm:text-xs" title="Journaled">
                         {moodEmoji(journal[day]) ?? <NotebookPen className="size-3 text-muted-foreground" />}
                       </span>
                     )}
                   </span>
+                  {!p && o && (
+                    <span className="mt-auto text-[10px] font-medium text-muted-foreground sm:text-[11px]">
+                      <span className="sm:hidden">{o.opened}↗</span>
+                      <span className="hidden sm:inline">
+                        {o.opened} opened{o.running ? ` · ${o.running} running` : ""}
+                      </span>
+                    </span>
+                  )}
                   {p && (
                     <span className="mt-auto grid gap-0.5">
                       <span className={cn("hidden font-mono text-[13px] font-semibold tracking-tight tabular sm:block lg:text-sm", pnlText(p.net))}>

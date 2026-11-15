@@ -33,6 +33,8 @@ type Props = {
   hasAccounts: boolean;
   /** day → mood (null when the entry has no mood) for days with a journal entry. */
   journal: Record<string, number | null>;
+  /** day → orders opened that day (and how many are still running). */
+  opened: Record<string, { opened: number; running: number }>;
 };
 
 const href = (view: CalendarView, d: string) => `/calendar?view=${view}&d=${d}`;
@@ -170,6 +172,7 @@ export function CalendarShell(props: Props) {
               byDay={byDay}
               currency={currency}
               journal={props.journal}
+              opened={props.opened}
               onSelect={setOpenDay}
             />
           )}
@@ -181,11 +184,20 @@ export function CalendarShell(props: Props) {
               trades={props.weekTrades}
               currency={currency}
               timezone={props.timezone}
+              opened={props.opened}
               onSelect={setOpenDay}
             />
           )}
           {view === "year" && (
-            <YearView year={anchor.slice(0, 4)} today={today} weekStartsOn={weekStartsOn} byDay={byDay} currency={currency} onSelect={setOpenDay} />
+            <YearView
+              year={anchor.slice(0, 4)}
+              today={today}
+              weekStartsOn={weekStartsOn}
+              byDay={byDay}
+              currency={currency}
+              opened={props.opened}
+              onSelect={setOpenDay}
+            />
           )}
         </motion.div>
       </AnimatePresence>

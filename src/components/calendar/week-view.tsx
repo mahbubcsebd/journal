@@ -16,10 +16,11 @@ type Props = {
   trades: CalendarTrade[];
   currency: string;
   timezone: string;
+  opened?: Record<string, { opened: number; running: number }>;
   onSelect: (day: string) => void;
 };
 
-export function WeekView({ start, today, byDay, trades, currency, timezone, onSelect }: Props) {
+export function WeekView({ start, today, byDay, trades, currency, timezone, opened = {}, onSelect }: Props) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const maxAbs = Math.max(0, ...days.map((d) => Math.abs(byDay.get(d)?.net ?? 0)));
 
@@ -28,6 +29,7 @@ export function WeekView({ start, today, byDay, trades, currency, timezone, onSe
       {days.map((day, i) => {
         const p = byDay.get(day);
         const list = trades.filter((t) => t.day === day);
+        const o = opened[day];
         return (
           <motion.div
             key={day}
@@ -44,8 +46,13 @@ export function WeekView({ start, today, byDay, trades, currency, timezone, onSe
               >
                 <p className="text-xs text-muted-foreground">{formatDay(day, { weekday: "short", month: "short", day: "numeric" })}</p>
                 <p className={cn("font-mono text-sm font-semibold tabular", p ? pnlText(p.net) : "text-muted-foreground")}>
-                  {p ? formatMoney(p.net, currency, { sign: true }) : "No trades"}
+                  {p ? formatMoney(p.net, currency, { sign: true }) : o ? "Nothing closed" : "No trades"}
                 </p>
+                {o && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {o.opened} opened{o.running ? ` · ${o.running} running` : ""}
+                  </p>
+                )}
               </button>
               <ul className="grid content-start gap-1 p-1.5">
                 {list.map((t) => (
