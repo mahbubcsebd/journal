@@ -24,6 +24,37 @@ function describe(url) {
   }
 }
 
+async function tryUrl(url) {
+  const sql = postgres(url, { prepare: false, connect_timeout: 10, max: 1, onnotice: () => {} });
+  try {
+    await sql`select 1`;
+    return null;
+  } catch (e) {
+    return `${e.code ?? ""} ${e.message ?? e}`.trim();
+  } finally {
+    await sql.end({ timeout: 2 }).catch(() => {});
+  }
+}
+
+/** On a timeout, try the usual fixes so we can say exactly which one works. */
+async function tryVariants(url) {
+  const variants = [];
+  const u = new URL(url);
+  const other = u.hostname.replace(/^aws-(\d)-/, (_, n) => `aws-${n === "0" ? "1" : "0"}-`);
+  if (other !== u.hostname) {
+    const v = new URL(url);
+    v.hostname = other;
+    variants.push([`host ${other}`, v.toString()]);
+  }
+  const ssl = new URL(url);
+  ssl.searchParams.set("sslmode", "require");
+  variants.push(["?sslmode=require", ssl.toString()]);
+  for (const [label, v] of variants) {
+    const err = await tryUrl(v);
+    console.log(`     try ${label}: ${err ? "FAIL " + err : "OK  ← use this"}`);
+  }
+}
+
 let failed = false;
 for (const name of ["DATABASE_URL", "DIRECT_URL"]) {
   const url = process.env[name];
@@ -44,6 +75,7 @@ for (const name of ["DATABASE_URL", "DIRECT_URL"]) {
     console.log(`FAIL ${name} → ${describe(url)} (${Date.now() - started} ms)\n     ${msg}`);
     const hint = hints.find(([re]) => re.test(msg));
     if (hint) console.log(`     Hint: ${hint[1]}`);
+    if (/CONNECT_TIMEOUT|ETIMEDOUT|Tenant or user not found/i.test(msg)) await tryVariants(url).catch(() => {});
   } finally {
     await sql.end({ timeout: 2 }).catch(() => {});
   }
