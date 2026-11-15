@@ -10,6 +10,9 @@ import { getUserAccounts, requireUser } from "@/lib/session";
 import { metaApiConfigured } from "@/server/services/metaapi";
 import { AccountDialog } from "./account-dialog";
 import { AccountList } from "./account-list";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { BookOpen } from "lucide-react";
 
 export const metadata: Metadata = { title: "Accounts" };
 
@@ -19,7 +22,16 @@ export default function AccountsPage() {
       <PageHeader
         title="Trading accounts"
         description="Every Exness MT5 login you trade — tracked separately and synced automatically through the MT5 EA or MetaApi."
-        actions={<AccountDialog />}
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link href="/guide/mt5">
+                <BookOpen /> Setup guide
+              </Link>
+            </Button>
+            <AccountDialog />
+          </>
+        }
       />
       <Suspense
         fallback={

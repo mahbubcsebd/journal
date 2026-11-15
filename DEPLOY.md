@@ -87,7 +87,7 @@ Custom domain chaile: Vercel → Project → **Settings → Domains**. Domain ad
 - [ ] `https://<app>/login` → email dao → Gmail e OTP ashe → login hoy → onboarding.
 - [ ] Accounts → protiti Exness MT5 account add koro (login, server, type).
 - [ ] Import → MT5 history report (.html/.xlsx) upload kore purono trade ano.
-- [ ] Accounts → **Connect auto-sync** → MT5 EA:
+- [ ] Accounts → **Connect auto-sync** → MT5 EA (puro step-by-step: [docs/MT5-SETUP-GUIDE.md](docs/MT5-SETUP-GUIDE.md), app e `/guide/mt5`):
       key generate → `JournalSync.mq5` download → MT5 te `MQL5/Experts` folder e rakho →
       MetaEditor e khule **F7** (compile) → Tools → Options → Expert Advisors →
       *Allow WebRequest for listed URL* e `https://<app>` add → EA ke chart e lagao, key paste koro.

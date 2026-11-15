@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Cloud, Copy, Cpu, Download, KeyRound, Loader2, Plug, Trash2 } from "lucide-react";
+import { BookOpen, Check, Cloud, Copy, Cpu, Download, ExternalLink, KeyRound, Loader2, Plug, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,20 @@ export function ConnectDialog({
         <AnimatePresence mode="wait">
           {tab === "ea" ? (
             <motion.ol key="ea" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-4">
+              <li className="list-none">
+                <a
+                  href="/guide/mt5"
+                  target="_blank"
+                  rel="noopener"
+                  className="flex items-center gap-2.5 rounded-xl border border-brand/30 bg-brand-soft/60 px-3.5 py-2.5 text-sm transition hover:bg-brand-soft"
+                >
+                  <BookOpen className="size-4 shrink-0 text-brand-ink" />
+                  <span className="flex-1">
+                    <b>First time?</b> Follow the step-by-step setup guide, with every MT5 menu and folder name.
+                  </span>
+                  <ExternalLink className="size-3.5 text-muted-foreground" />
+                </a>
+              </li>
               <Step n={1} title="Create a sync key">
                 {key ? (
                   <div className="grid gap-1.5">

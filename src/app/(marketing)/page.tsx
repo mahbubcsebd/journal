@@ -25,6 +25,9 @@ export default function Home() {
         <Logo />
         <div className="flex items-center gap-1">
           <ThemeToggle />
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+            <Link href="/guide/mt5">Setup guide</Link>
+          </Button>
           <Button asChild variant="ghost" size="sm">
             <Link href="/login">Sign in</Link>
           </Button>
