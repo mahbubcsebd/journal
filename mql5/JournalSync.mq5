@@ -140,7 +140,7 @@ bool Post(string dealsJson)
       Print("JournalSync: ", g_status);
       return false;
      }
-   if(code >= 300 && code < 400 || code >= 1000)
+   if((code >= 300 && code < 400) || code >= 1000)
      {
       // MT5 doesn't follow redirects; it reports them (and failed TLS/connections) as 1001-style codes.
       g_status = "can't reach " + Endpoint() + " (code " + IntegerToString(code) + "). Open " + InpServerUrl +
