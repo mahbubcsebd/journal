@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildTradesFromDeals } from "../trading/build-trades";
-import { eaPayloadSchema, fromEaDeal, fromEaPosition, fromMetaApiDeal, fromMetaApiPosition } from "./map";
+import { eaPayloadSchema, fromEaDeal, fromEaPosition, fromMetaApiDeal, fromMetaApiPosition, parseEaPayload } from "./map";
 
 describe("MetaApi mapping", () => {
   it("maps deals and builds a closed position", () => {
@@ -50,5 +50,15 @@ describe("EA payload", () => {
   it("rejects malformed payloads", () => {
     expect(eaPayloadSchema.safeParse({ ...payload, login: "abc" }).success).toBe(false);
     expect(eaPayloadSchema.safeParse({ ...payload, deals: [{ ticket: 1 }] }).success).toBe(false);
+    const bad = parseEaPayload({ ...payload, currency: undefined });
+    expect(bad).toMatchObject({ ok: false });
+    expect(!bad.ok && bad.error).toMatch(/^currency: /);
+  });
+  it("skips a broken deal instead of rejecting the whole sync", () => {
+    const r = parseEaPayload({ ...payload, deals: [...payload.deals, { ticket: 1 }, { ...payload.deals[0], ticket: 9002, time: "1793866600", volume: "0.10" }] });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.data.deals.map((d) => d.ticket)).toEqual(["9001", "9000", "9002"]);
+    expect(r.data.deals[2]).toMatchObject({ time: 1793866600, volume: 0.1 });
+    expect(r.skipped).toEqual([expect.stringMatching(/^deals\[2\] type: /)]);
   });
 });

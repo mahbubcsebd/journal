@@ -94,54 +94,96 @@ export function fromMetaApiPosition(p: MetaApiPosition): OpenPosition {
 /* ─────────────────────────────── MT5 EA ─────────────────────────────── */
 // Payload sent by mql5/JournalSync.mq5. Times are UNIX seconds already converted to UTC by the EA.
 
-const num = z.number().finite();
+// Lenient on purpose: accept numbers sent as strings, and any integer-ish
+// value, so one oddly formatted field from a broker doesn't block a sync.
+const num = z
+  .union([z.number(), z.string().trim().regex(/^-?\d+(\.\d+)?(e[-+]?\d+)?$/i).transform(Number)])
+  .pipe(z.number().finite());
+const int = num.transform(Math.trunc);
+const id = z.union([z.string(), z.number()]).transform(String);
+
 const eaDeal = z.object({
-  ticket: z.union([z.string(), z.number()]).transform(String),
-  order: z.union([z.string(), z.number()]).transform(String).optional(),
-  position: z.union([z.string(), z.number()]).transform(String).optional(),
-  symbol: z.string().max(40).optional().default(""),
-  type: z.number().int(), // ENUM_DEAL_TYPE
-  entry: z.number().int(), // ENUM_DEAL_ENTRY
-  volume: num,
-  price: num,
+  ticket: id,
+  order: id.optional(),
+  position: id.optional(),
+  symbol: z.string().max(64).optional().default(""),
+  type: int, // ENUM_DEAL_TYPE
+  entry: int.optional().default(0), // ENUM_DEAL_ENTRY
+  volume: num.optional().default(0),
+  price: num.optional().default(0),
   sl: num.optional().default(0),
   tp: num.optional().default(0),
   commission: num.optional().default(0),
   swap: num.optional().default(0),
   fee: num.optional().default(0),
-  profit: num,
-  time: z.number().int().positive(),
-  magic: z.number().int().optional(),
-  comment: z.string().max(200).optional(),
+  profit: num.optional().default(0),
+  time: int.pipe(z.number().positive()),
+  magic: num.optional(),
+  comment: z.string().optional().transform((c) => c?.slice(0, 200)),
 });
 const eaPosition = z.object({
-  ticket: z.union([z.string(), z.number()]).transform(String),
-  symbol: z.string().max(40),
-  type: z.number().int(), // 0 buy, 1 sell
+  ticket: id,
+  symbol: z.string().max(64),
+  type: int, // 0 buy, 1 sell
   volume: num,
   price_open: num,
   price_current: num.optional(),
   sl: num.optional().default(0),
   tp: num.optional().default(0),
-  profit: num,
+  profit: num.optional().default(0),
   swap: num.optional().default(0),
-  time: z.number().int().positive(),
+  time: int.pipe(z.number().positive()),
 });
 
 export const eaPayloadSchema = z.object({
-  version: z.number().int().optional(),
-  login: z.union([z.string(), z.number()]).transform(String).pipe(z.string().regex(/^\d{3,15}$/)),
-  server: z.string().min(1).max(80),
-  company: z.string().max(120).optional(),
-  currency: z.string().min(3).max(4),
+  version: int.optional(),
+  login: id.pipe(z.string().trim().regex(/^\d{3,20}$/)),
+  server: z.string().trim().min(1).max(120),
+  company: z.string().optional(),
+  currency: z.string().trim().min(2).max(8),
   balance: num,
   equity: num,
-  leverage: z.number().int().optional(),
-  trade_mode: z.number().int().optional(), // 0 demo, 1 contest, 2 real
+  leverage: int.optional(),
+  trade_mode: int.optional(), // 0 demo, 1 contest, 2 real
   deals: z.array(eaDeal).max(5000).default([]),
   positions: z.array(eaPosition).max(500).default([]),
 });
 export type EaPayload = z.infer<typeof eaPayloadSchema>;
+
+/** "deals[3].time: Invalid input" — short enough to show on the MT5 chart. */
+export function describeIssues(issues: z.core.$ZodIssue[]) {
+  return issues
+    .slice(0, 3)
+    .map((i) => `${i.path.map((k) => (typeof k === "number" ? `[${k}]` : `.${String(k)}`)).join("").replace(/^\./, "") || "body"}: ${i.message}`)
+    .join("; ");
+}
+
+/**
+ * Validates an EA payload. The account fields must be valid; a deal or
+ * position that isn't is skipped (and reported) instead of failing the sync.
+ */
+export function parseEaPayload(raw: unknown) {
+  const base = eaPayloadSchema
+    .omit({ deals: true, positions: true })
+    .extend({ deals: z.array(z.unknown()).max(5000).default([]), positions: z.array(z.unknown()).max(500).default([]) })
+    .safeParse(raw);
+  if (!base.success) return { ok: false as const, error: describeIssues(base.error.issues) };
+
+  const skipped: string[] = [];
+  const deals: EaPayload["deals"] = [];
+  base.data.deals.forEach((d, i) => {
+    const r = eaDeal.safeParse(d);
+    if (r.success) deals.push(r.data);
+    else skipped.push(`deals[${i}] ${describeIssues(r.error.issues)}`);
+  });
+  const positions: EaPayload["positions"] = [];
+  base.data.positions.forEach((p, i) => {
+    const r = eaPosition.safeParse(p);
+    if (r.success) positions.push(r.data);
+    else skipped.push(`positions[${i}] ${describeIssues(r.error.issues)}`);
+  });
+  return { ok: true as const, data: { ...base.data, deals, positions } satisfies EaPayload, skipped };
+}
 
 // MQL5 ENUM_DEAL_TYPE / ENUM_DEAL_ENTRY values.
 const EA_DEAL_TYPES = ["BUY", "SELL", "BALANCE", "CREDIT", "CHARGE", "CORRECTION", "BONUS", "COMMISSION", "COMMISSION_DAILY", "COMMISSION_MONTHLY", "COMMISSION_AGENT_DAILY", "COMMISSION_AGENT_MONTHLY", "INTEREST", "BUY_CANCELED", "SELL_CANCELED", "DIVIDEND", "DIVIDEND_FRANKED", "TAX"];

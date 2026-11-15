@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { db } from "@/db";
 import { syncKey, tradingAccount, user } from "@/db/schema";
 import { userForKey } from "@/lib/sync/keys";
-import { eaPayloadSchema, fromEaDeal, fromEaPosition } from "@/lib/sync/map";
+import { fromEaDeal, fromEaPosition, parseEaPayload } from "@/lib/sync/map";
 import { ingestDeals } from "@/server/services/ingest";
 import { sendGoalAlerts } from "@/server/services/notifications";
 
@@ -33,8 +33,12 @@ export async function POST(request: Request) {
   } catch {
     return json(400, { error: "Body is not JSON" });
   }
-  const parsed = eaPayloadSchema.safeParse(raw);
-  if (!parsed.success) return json(400, { error: "Unexpected payload", issues: parsed.error.issues.slice(0, 5) });
+  const parsed = parseEaPayload(raw);
+  if (!parsed.ok) {
+    console.warn("[sync/mt5] rejected payload:", parsed.error);
+    return json(400, { error: `Unexpected payload: ${parsed.error}` });
+  }
+  if (parsed.skipped.length) console.warn(`[sync/mt5] skipped ${parsed.skipped.length} item(s):`, parsed.skipped.slice(0, 5));
   const p = parsed.data;
 
   await db.update(syncKey).set({ lastUsedAt: new Date() }).where(eq(syncKey.id, key.id));
@@ -110,5 +114,5 @@ export async function POST(request: Request) {
       if (u) await sendGoalAlerts(u).catch((e) => console.error("goal alerts after EA sync failed", e));
     });
   }
-  return json(200, { ok: true, accountId: account.id, ...result });
+  return json(200, { ok: true, accountId: account.id, ...result, skipped: parsed.skipped.length });
 }
