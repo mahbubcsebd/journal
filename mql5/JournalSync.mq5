@@ -4,7 +4,7 @@
 //| your Journal app. Read-only: it never places or changes trades.  |
 //+------------------------------------------------------------------+
 #property copyright   "Journal"
-#property version     "1.01"
+#property version     "1.02"
 #property description "Auto-sync your Exness MT5 trades to Journal."
 #property description "1) Tools → Options → Expert Advisors → tick 'Allow WebRequest for listed URL' and add your Journal URL."
 #property description "2) Paste your sync key below. Attach to any one chart per account."
@@ -15,7 +15,9 @@ input int    InpHistoryDays      = 90;                // History sent on first r
 input int    InpHeartbeatSeconds = 60;                // Balance & open positions every N seconds
 
 #define PAYLOAD_VERSION 1
-#define CHUNK 500
+#define CHUNK 100          // deals per request (keeps each request small and fast)
+#define TIMEOUT_MS 60000   // WebRequest timeout
+#define GAP_MS 1700        // pause between requests; the server allows one per 1.5 s
 
 bool     g_pending      = true;   // new deals to send
 datetime g_lastBeat     = 0;      // last successful request (local)
@@ -24,14 +26,56 @@ datetime g_syncedUntil  = 0;      // newest deal time sent (server time)
 int      g_failures     = 0;
 string   g_status       = "starting";
 
+bool     g_reachable    = false;  // connection test passed
+
 string GvName() { return "JournalSync_" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)); }
 
-string Endpoint()
+string BaseUrl()
   {
    string u = InpServerUrl;
    StringTrimRight(u); StringTrimLeft(u);
    if(StringLen(u) > 0 && StringSubstr(u, StringLen(u) - 1) == "/") u = StringSubstr(u, 0, StringLen(u) - 1);
-   return u + "/api/sync/mt5";
+   return u;
+  }
+
+string Endpoint() { return BaseUrl() + "/api/sync/mt5"; }
+
+void ShowStatus() { Comment("Journal sync: ", g_status); }
+
+// Explain codes that aren't HTTP statuses. MT5 doesn't follow redirects and reports
+// them, and failed TLS/connections, as codes such as 1001.
+string Explain(int code)
+  {
+   if((code >= 300 && code < 400) || code >= 1000)
+      return "can't reach " + BaseUrl() + " (code " + IntegerToString(code) + "). Check: the URL is https and exactly your app's domain; " +
+             "it opens in a private browser window without a Vercel login; Windows is up to date (TLS 1.2); " +
+             "no antivirus/VPN is intercepting HTTPS";
+   return "";
+  }
+
+// Quick GET to the app before syncing, so a connection problem is reported clearly.
+bool Ping()
+  {
+   char none[], result[];
+   string responseHeaders;
+   ResetLastError();
+   int code = WebRequest("GET", BaseUrl() + "/api/health/db", "", TIMEOUT_MS, none, result, responseHeaders);
+   if(code == 200)
+     {
+      Print("JournalSync: connected to ", BaseUrl());
+      return true;
+     }
+   int err = GetLastError();
+   if(code == -1)
+      g_status = (err == 4014) ? "add " + BaseUrl() + " in Tools > Options > Expert Advisors > Allow WebRequest"
+                               : "network error " + IntegerToString(err) + " reaching " + BaseUrl();
+   else
+     {
+      string why = Explain(code);
+      g_status = (why != "") ? why : "connection test got HTTP " + IntegerToString(code);
+     }
+   Print("JournalSync: ", g_status, " | GetLastError=", err, " | headers: ", responseHeaders);
+   return false;
   }
 
 string Esc(string s)
@@ -130,23 +174,28 @@ bool Post(string dealsJson)
    string headers = "Content-Type: application/json\r\nAuthorization: Bearer " + InpApiKey + "\r\n";
    g_lastAttempt = TimeLocal();
    ResetLastError();
-   int code = WebRequest("POST", Endpoint(), headers, 20000, data, result, responseHeaders);
+   int code = WebRequest("POST", Endpoint(), headers, TIMEOUT_MS, data, result, responseHeaders);
+   int err = GetLastError();
+   if(code == 429)
+     {
+      Sleep(GAP_MS); // rate limited: wait once and retry
+      ResetLastError();
+      code = WebRequest("POST", Endpoint(), headers, TIMEOUT_MS, data, result, responseHeaders);
+      err = GetLastError();
+     }
    if(code == -1)
      {
-      int err = GetLastError();
       g_status = (err == 4014)
                  ? "add " + InpServerUrl + " in Tools > Options > Expert Advisors > Allow WebRequest"
                  : "network error " + IntegerToString(err);
       Print("JournalSync: ", g_status);
       return false;
      }
-   if((code >= 300 && code < 400) || code >= 1000)
+   string why = Explain(code);
+   if(why != "")
      {
-      // MT5 doesn't follow redirects; it reports them (and failed TLS/connections) as 1001-style codes.
-      g_status = "can't reach " + Endpoint() + " (code " + IntegerToString(code) + "). Open " + InpServerUrl +
-                 " in a private browser window: if it asks you to log in to Vercel, turn off Deployment Protection; " +
-                 "also check the URL is https and exactly your app's domain";
-      Print("JournalSync: ", g_status);
+      g_status = why;
+      Print("JournalSync: ", g_status, " | body bytes=", ArraySize(data), " | GetLastError=", err, " | headers: ", responseHeaders);
       return false;
      }
    if(code != 200)
@@ -161,6 +210,12 @@ bool Post(string dealsJson)
 
 void SyncNow()
   {
+   if(!g_reachable)
+     {
+      g_lastAttempt = TimeLocal();
+      if(!Ping()) { g_failures++; return; }
+      g_reachable = true;
+     }
    datetime from = (g_syncedUntil > 0) ? g_syncedUntil - 3600 : TimeCurrent() - (datetime)InpHistoryDays * 86400;
    if(!HistorySelect(from, TimeCurrent() + 86400))
      {
@@ -184,6 +239,9 @@ void SyncNow()
         {
          if(!Post("[" + chunk + "]")) { g_failures++; return; }
          sent += inChunk; chunk = ""; inChunk = 0;
+         g_status = StringFormat("sending history… %d / %d deals", sent, total);
+         ShowStatus();
+         Sleep(GAP_MS);
         }
      }
    // Last (or only) chunk — also acts as the balance / positions heartbeat.
@@ -195,8 +253,6 @@ void SyncNow()
    GlobalVariableSet(GvName(), (double)g_syncedUntil);
    g_status = StringFormat("synced %s · %d deals checked", TimeToString(TimeLocal(), TIME_MINUTES), sent);
   }
-
-void ShowStatus() { Comment("Journal sync: ", g_status); }
 
 int OnInit()
   {
