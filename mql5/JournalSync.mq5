@@ -4,7 +4,7 @@
 //| your Journal app. Read-only: it never places or changes trades.  |
 //+------------------------------------------------------------------+
 #property copyright   "Journal"
-#property version     "1.00"
+#property version     "1.01"
 #property description "Auto-sync your Exness MT5 trades to Journal."
 #property description "1) Tools → Options → Expert Advisors → tick 'Allow WebRequest for listed URL' and add your Journal URL."
 #property description "2) Paste your sync key below. Attach to any one chart per account."
@@ -140,9 +140,18 @@ bool Post(string dealsJson)
       Print("JournalSync: ", g_status);
       return false;
      }
+   if(code >= 300 && code < 400 || code >= 1000)
+     {
+      // MT5 doesn't follow redirects; it reports them (and failed TLS/connections) as 1001-style codes.
+      g_status = "can't reach " + Endpoint() + " (code " + IntegerToString(code) + "). Open " + InpServerUrl +
+                 " in a private browser window: if it asks you to log in to Vercel, turn off Deployment Protection; " +
+                 "also check the URL is https and exactly your app's domain";
+      Print("JournalSync: ", g_status);
+      return false;
+     }
    if(code != 200)
      {
-      g_status = "server replied " + IntegerToString(code) + ": " + CharArrayToString(result, 0, 200, CP_UTF8);
+      g_status = "server replied " + IntegerToString(code) + ": " + CharArrayToString(result, 0, 300, CP_UTF8);
       Print("JournalSync: ", g_status);
       return false;
      }
