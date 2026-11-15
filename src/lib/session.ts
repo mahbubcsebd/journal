@@ -50,7 +50,9 @@ export const getSelectedAccountIds = cache(async (userId: string) => {
   if (!raw || raw === "all") return { ids: all, isAll: true };
   const wanted = raw.split(",").filter((id) => all.includes(id));
   if (wanted.length === 0) return { ids: all, isAll: true };
-  return { ids: wanted, isAll: wanted.length === all.length };
+  // An explicit pick stays a pick (e.g. the only account, chosen on purpose),
+  // so the switcher shows its name rather than "All accounts".
+  return { ids: wanted, isAll: false };
 });
 
 export async function assertOwnsAccounts(userId: string, ids: string[]) {

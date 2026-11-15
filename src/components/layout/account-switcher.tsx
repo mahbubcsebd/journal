@@ -39,12 +39,19 @@ export function AccountSwitcher({
   const [pending, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic({ selected, isAll });
 
+  /** `[]` means all accounts; anything else is an explicit selection. */
   const apply = (ids: string[]) => {
-    const all = ids.length === 0 || ids.length === accounts.length;
+    const all = ids.length === 0;
     startTransition(async () => {
       setOptimistic({ selected: all ? accounts.map((a) => a.id) : ids, isAll: all });
-      await setAccountFilter(all ? [] : ids);
+      await setAccountFilter(ids);
     });
+  };
+
+  /** Tap an account: show only that one. */
+  const only = (id: string) => {
+    setOpen(false);
+    apply([id]);
   };
 
   const toggle = (id: string) => {
@@ -53,13 +60,13 @@ export function AccountSwitcher({
     apply(next);
   };
 
-  const only = accounts.find((a) => a.id === optimistic.selected[0]);
+  const single = !optimistic.isAll && optimistic.selected.length === 1 ? accounts.find((a) => a.id === optimistic.selected[0]) : undefined;
   const label = accounts.length === 0
     ? "No accounts"
     : optimistic.isAll
       ? "All accounts"
-      : optimistic.selected.length === 1 && only
-        ? only.nickname
+      : single
+        ? single.nickname
         : `${optimistic.selected.length} accounts`;
 
   return (
@@ -73,10 +80,10 @@ export function AccountSwitcher({
           pending && "opacity-70",
         )}
       >
-        {optimistic.isAll || !only || optimistic.selected.length > 1 ? (
-          <Layers className="size-4 text-muted-foreground" />
+        {single ? (
+          <span className="size-2.5 shrink-0 rounded-full" style={{ background: single.color }} />
         ) : (
-          <span className="size-2.5 shrink-0 rounded-full" style={{ background: only.color }} />
+          <Layers className="size-4 text-muted-foreground" />
         )}
         <span className="truncate">{label}</span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
@@ -87,7 +94,14 @@ export function AccountSwitcher({
           <CommandList className="max-h-80">
             <CommandEmpty>No accounts found.</CommandEmpty>
             <CommandGroup heading="Show data from">
-              <CommandItem value="__all__" keywords={["All accounts"]} onSelect={() => apply([])}>
+              <CommandItem
+                value="__all__"
+                keywords={["All accounts"]}
+                onSelect={() => {
+                  setOpen(false);
+                  apply([]);
+                }}
+              >
                 <Layers />
                 <span className="flex-1">All accounts</span>
                 <Check className={cn("!text-foreground", optimistic.isAll ? "opacity-100" : "opacity-0")} />
@@ -96,7 +110,7 @@ export function AccountSwitcher({
             {accounts.length > 0 && (
               <>
                 <CommandSeparator />
-                <CommandGroup>
+                <CommandGroup heading={accounts.length > 1 ? "Tap to switch · tick boxes to combine" : undefined}>
                   {accounts.map((a) => {
                     const checked = !optimistic.isAll && optimistic.selected.includes(a.id);
                     return (
@@ -104,17 +118,34 @@ export function AccountSwitcher({
                         key={a.id}
                         value={a.id}
                         keywords={[a.nickname, a.login, a.accountType]}
-                        onSelect={() => toggle(a.id)}
-                        aria-checked={checked}
+                        onSelect={() => only(a.id)}
+                        aria-selected={checked}
+                        className="py-2"
                       >
-                        <span
-                          className={cn(
-                            "grid size-4 shrink-0 place-items-center rounded border",
-                            checked ? "border-foreground bg-foreground text-background" : "border-input",
-                          )}
-                        >
-                          {checked && <Check className="size-3 !text-background" />}
-                        </span>
+                        {accounts.length > 1 && (
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={checked}
+                            aria-label={`Combine ${a.nickname}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggle(a.id);
+                            }}
+                            className={cn(
+                              "-m-1.5 grid size-7 shrink-0 place-items-center rounded-md hover:bg-background/60",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "grid size-4 place-items-center rounded border",
+                                checked ? "border-foreground bg-foreground text-background" : "border-input",
+                              )}
+                            >
+                              {checked && <Check className="size-3 !text-background" />}
+                            </span>
+                          </button>
+                        )}
                         <span className="size-2.5 shrink-0 rounded-full" style={{ background: a.color }} />
                         <span className="grid min-w-0 flex-1">
                           <span className="truncate">{a.nickname}</span>
@@ -125,6 +156,7 @@ export function AccountSwitcher({
                         {a.environment === "DEMO" && (
                           <span className="rounded bg-warning/15 px-1 text-[10px] font-medium text-warning-ink">DEMO</span>
                         )}
+                        {single?.id === a.id && <Check className="!text-foreground" />}
                       </CommandItem>
                     );
                   })}
