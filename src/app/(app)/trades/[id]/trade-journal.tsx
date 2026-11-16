@@ -69,7 +69,7 @@ export function TradeJournal({
   tradeId: string;
   initial: JournalInput;
   tags: TagOpt[];
-  setups: { id: string; name: string }[];
+  setups: { id: string; name: string; checklist?: string[] }[];
 }) {
   const confirm = useConfirm();
   const [v, setV] = useState<JournalInput>(initial);
@@ -195,7 +195,7 @@ export function TradeJournal({
             <Combobox
               id="setup"
               value={v.setupId ?? ""}
-              onValueChange={(val) => set("setupId", val || null)}
+              onValueChange={(val) => setV((s) => ({ ...s, setupId: val || null, checklist: null }))}
               searchPlaceholder="Search setups…"
               options={[{ value: "", label: "No setup" }, ...setups.map((s) => ({ value: s.id, label: s.name }))]}
               actions={[{ label: "New setup…", icon: <Plus />, onSelect: () => setNewSetup("") }]}
@@ -222,6 +222,55 @@ export function TradeJournal({
             </form>
           )}
         </div>
+
+        {(() => {
+          const items = setups.find((s) => s.id === v.setupId)?.checklist ?? [];
+          if (!v.setupId || items.length === 0) return null;
+          const met = items.filter((i) => v.checklist?.[i]).length;
+          const toggle = (item: string) =>
+            setV((s) => {
+              const next = Object.fromEntries(items.map((i) => [i, i === item ? !s.checklist?.[i] : Boolean(s.checklist?.[i])]));
+              // Every rule met = the plan was followed; anything missed = it wasn't.
+              return { ...s, checklist: next, followedPlan: Object.values(next).every(Boolean) };
+            });
+          return (
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Setup checklist</Label>
+                <span className={cn("text-xs font-medium tabular", met === items.length ? "text-profit" : "text-muted-foreground")}>
+                  {met}/{items.length} met
+                </span>
+              </div>
+              <ul className="grid gap-1 rounded-lg border p-1.5">
+                {items.map((item) => {
+                  const on = Boolean(v.checklist?.[item]);
+                  return (
+                    <li key={item}>
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={on}
+                        onClick={() => toggle(item)}
+                        className="flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-accent"
+                      >
+                        <span
+                          className={cn(
+                            "mt-0.5 grid size-4 shrink-0 place-items-center rounded border",
+                            on ? "border-profit bg-profit text-white" : "border-input",
+                          )}
+                        >
+                          {on && <Check className="size-3" />}
+                        </span>
+                        <span className={cn(on ? "text-foreground" : "text-muted-foreground")}>{item}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-xs text-muted-foreground">Tick what this trade really met. Psychology compares fully-checked trades with the rest.</p>
+            </div>
+          );
+        })()}
 
         <div className="grid grid-cols-2 gap-3">
           {(["emotionBefore", "emotionAfter"] as const).map((k) => (

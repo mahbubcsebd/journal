@@ -25,6 +25,8 @@ export type ATrade = {
   accountName: string;
   openAt: number; // epoch ms
   closeAt: number; // epoch ms
+  /** Setup checklist ticked on the trade, if any. */
+  checklist?: { done: number; total: number } | null;
 };
 
 export type GroupRow = {

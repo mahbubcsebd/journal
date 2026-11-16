@@ -165,6 +165,7 @@ async function TradeView({ params }: { params: PageProps<"/trades/[id]">["params
               sl: t.sl,
               isBacktest: t.isBacktest,
               tagIds: t.tagIds,
+              checklist: t.checklist ?? null,
             }}
             tags={options.tags}
             setups={options.setups}

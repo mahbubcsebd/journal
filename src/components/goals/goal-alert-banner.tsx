@@ -6,7 +6,13 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
-export type Alert = { id: string; tone: "danger" | "warning" | "success"; text: string };
+export type Alert = {
+  id: string;
+  tone: "danger" | "warning" | "success";
+  text: string;
+  /** Link shown at the end of the banner (default: Goals). */
+  link?: { href: string; label: string };
+};
 
 const KEY = "jr_dismissed_alerts";
 const read = () => {
@@ -57,8 +63,8 @@ export function GoalAlertBanner({ alerts }: { alerts: Alert[] }) {
             >
               <Icon className={cn("size-4 shrink-0", a.tone === "danger" ? "text-loss" : a.tone === "warning" ? "text-warning-ink" : "text-profit")} />
               <span className="flex-1">{a.text}</span>
-              <Link href="/goals" className="text-xs font-medium whitespace-nowrap underline-offset-4 hover:underline">
-                Goals
+              <Link href={a.link?.href ?? "/goals"} className="text-xs font-medium whitespace-nowrap underline-offset-4 hover:underline">
+                {a.link?.label ?? "Goals"}
               </Link>
               <button type="button" aria-label="Dismiss" onClick={() => dismiss(a.id)} className="rounded-md p-1 text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10">
                 <X className="size-3.5" />

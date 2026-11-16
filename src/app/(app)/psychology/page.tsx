@@ -10,12 +10,14 @@ import { FadeIn, Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { disciplineScore, groupBy, summarize, tiltPatterns, type ATrade, type GroupRow } from "@/lib/analytics";
-import { todayIn } from "@/lib/dates";
+import { todayIn, type WeekStart } from "@/lib/dates";
 import { MOODS } from "@/lib/journal";
 import { parseRange, rangeStart } from "@/lib/ranges";
 import { getSelectedAccountIds, requireUser } from "@/lib/session";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
-import { getAnalyticsTrades } from "@/server/queries/analytics";
+import { getAnalyticsTrades, getSetupReps } from "@/server/queries/analytics";
+import { MindsetCoach } from "@/components/mindset/mindset-coach";
+import { DEFAULT_COOLDOWN_MINUTES } from "@/lib/mindset";
 import { getJournalDays } from "@/server/queries/journal";
 
 export const metadata: Metadata = { title: "Psychology" };
@@ -95,10 +97,14 @@ async function Psychology({ searchParams }: { searchParams: PageProps<"/psycholo
   const today = todayIn(user.timezone);
   const from = rangeStart(range, today);
   const { ids } = await getSelectedAccountIds(user.id);
-  const [{ trades, currency }, journal] = await Promise.all([
+  const [{ trades, currency }, journal, history, setupReps] = await Promise.all([
     getAnalyticsTrades(user.id, ids, from, today, user.timezone),
     getJournalDays(user.id, from ?? "1970-01-01", today),
+    // Baselines (records, averages, zones) come from all of the history.
+    from ? getAnalyticsTrades(user.id, ids, undefined, today, user.timezone) : Promise.resolve(null),
+    getSetupReps(user.id, ids),
   ]);
+  const allTrades = history?.trades ?? trades;
 
   const dayNet = new Map<string, number>();
   for (const t of trades) dayNet.set(t.day, (dayNet.get(t.day) ?? 0) + t.net);
@@ -125,6 +131,14 @@ async function Psychology({ searchParams }: { searchParams: PageProps<"/psycholo
         description="How discipline, emotions and tilt show up in your P&L."
         actions={<RangeTabs active={range} basePath="/psychology" fallback="90d" />}
       />
+      <MindsetCoach
+        trades={allTrades}
+        setupReps={setupReps}
+        currency={currency}
+        cooldownMinutes={user.settings.cooldownMinutes ?? DEFAULT_COOLDOWN_MINUTES}
+        weekStartsOn={(user.settings.weekStartsOn ?? 1) as WeekStart}
+      />
+      <h2 className="-mb-2 text-lg font-semibold tracking-tight">This period</h2>
       {trades.length === 0 ? (
         <Card className="px-6 py-16 text-center text-sm text-muted-foreground">No closed trades in this period.</Card>
       ) : (

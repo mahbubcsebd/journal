@@ -63,6 +63,8 @@ export type UserSettings = {
   emailGoalAlerts?: boolean;
   /** Language for AI insights. */
   aiLanguage?: "en" | "bn";
+  /** Minutes after a losing trade to wait before the next one (0 = off). Default 30. */
+  cooldownMinutes?: number;
 };
 
 export type JournalPremarket = {
@@ -339,6 +341,8 @@ export const trade = pgTable(
     emotionBefore: text("emotion_before"),
     emotionAfter: text("emotion_after"),
     followedPlan: boolean("followed_plan"),
+    /** Setup checklist ticked for this trade: item text → met. */
+    checklist: jsonb("checklist").$type<Record<string, boolean>>(),
     ...timestamps,
   },
   (t) => [

@@ -133,7 +133,11 @@ export async function getFilterOptions(userId: string) {
   const [symbols, tags, setups] = await Promise.all([
     db.selectDistinct({ symbol: trade.symbol }).from(trade).where(eq(trade.userId, userId)).orderBy(trade.symbol),
     db.select({ id: tag.id, name: tag.name, kind: tag.kind, color: tag.color }).from(tag).where(eq(tag.userId, userId)).orderBy(tag.kind, tag.name),
-    db.select({ id: setup.id, name: setup.name }).from(setup).where(eq(setup.userId, userId)).orderBy(setup.name),
+    db
+      .select({ id: setup.id, name: setup.name, checklist: setup.checklist })
+      .from(setup)
+      .where(eq(setup.userId, userId))
+      .orderBy(setup.name),
   ]);
   return { symbols: symbols.map((s) => s.symbol), tags, setups };
 }

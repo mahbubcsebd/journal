@@ -2,10 +2,21 @@ import { pnlText } from "@/components/calendar/pnl-style";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TradingAccount } from "@/db/schema";
+import { formatDuration } from "@/lib/mindset";
 import { cn, formatMoney, formatPrice } from "@/lib/utils";
+import { HoldTimer } from "./hold-timer";
 
 /** Live open positions reported by the EA / MetaApi for the selected accounts. */
-export function OpenPositions({ accounts, timezone }: { accounts: TradingAccount[]; timezone: string }) {
+export function OpenPositions({
+  accounts,
+  timezone,
+  benchmark = { avgWinSec: null, avgLossSec: null },
+}: {
+  accounts: TradingAccount[];
+  timezone: string;
+  /** The trader's average hold time for winners and losers. */
+  benchmark?: { avgWinSec: number | null; avgLossSec: number | null };
+}) {
   const rows = accounts.flatMap((a) => (a.openPositions ?? []).map((p) => ({ ...p, account: a })));
   if (rows.length === 0) return null;
   const allCent = accounts.every((a) => a.currency === "USC");
@@ -28,6 +39,12 @@ export function OpenPositions({ accounts, timezone }: { accounts: TradingAccount
           <CardDescription>
             {rows.length} open · updated{" "}
             {updated ? new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(updated) : "—"}
+            {benchmark.avgWinSec != null && (
+              <>
+                {" "}
+                · your winners take ~{formatDuration(benchmark.avgWinSec)}, losers ~{formatDuration(benchmark.avgLossSec)}
+              </>
+            )}
           </CardDescription>
         </div>
         <div className="text-right">
@@ -36,12 +53,13 @@ export function OpenPositions({ accounts, timezone }: { accounts: TradingAccount
         </div>
       </CardHeader>
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="border-y bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
               <th className="py-2 pr-3 pl-5 font-medium">Symbol</th>
               <th className="px-3 py-2 font-medium">Account</th>
               <th className="px-3 py-2 text-right font-medium">Lots</th>
+              <th className="px-3 py-2 text-right font-medium">Held</th>
               <th className="px-3 py-2 text-right font-medium">Open → now</th>
               <th className="px-3 py-2 text-right font-medium">SL / TP</th>
               <th className="py-2 pr-5 pl-3 text-right font-medium">P&amp;L</th>
@@ -61,6 +79,9 @@ export function OpenPositions({ accounts, timezone }: { accounts: TradingAccount
                   </span>
                 </td>
                 <td className="px-3 py-2.5 text-right font-mono tabular">{r.volume.toFixed(2)}</td>
+                <td className="px-3 py-2.5 text-right text-[13px]">
+                  <HoldTimer openTime={r.openTime} avgWinSec={benchmark.avgWinSec} avgLossSec={benchmark.avgLossSec} />
+                </td>
                 <td className="px-3 py-2.5 text-right font-mono text-[13px] text-muted-foreground tabular">
                   {formatPrice(r.openPrice)} → {formatPrice(r.currentPrice)}
                 </td>

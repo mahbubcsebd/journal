@@ -71,6 +71,17 @@ export async function saveNotificationSettings(input: z.infer<typeof notificatio
 }
 
 /** Send last week's summary right now, ignoring the schedule (for checking email setup). */
+const disciplineSchema = z.object({ cooldownMinutes: z.number().int().min(0).max(240) });
+
+/** Cooldown after a losing trade (0 turns it off). */
+export async function saveDisciplineSettings(input: z.infer<typeof disciplineSchema>) {
+  const current = await getCurrentUser();
+  if (!current) redirect("/login");
+  const data = disciplineSchema.parse(input);
+  await db.update(user).set({ settings: { ...current.settings, ...data } }).where(eq(user.id, current.id));
+  revalidatePath("/", "layout");
+}
+
 export async function sendWeeklyReportNow(): Promise<{ ok: boolean; message: string }> {
   const current = await getCurrentUser();
   if (!current) redirect("/login");

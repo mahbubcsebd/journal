@@ -20,6 +20,7 @@ import { getSelectedAccountIds, getUserAccounts, requireUser } from "@/lib/sessi
 import { cn, formatDateTime, formatMoney, formatPercent } from "@/lib/utils";
 import { getBreakdowns, getDailyPnl } from "@/server/queries/calendar";
 import { listTrades } from "@/server/queries/trades";
+import { getHoldBenchmarks } from "@/server/queries/analytics";
 import { RangeTabs } from "@/components/layout/range-tabs";
 import { parseRange, rangeStart } from "@/lib/ranges";
 
@@ -56,11 +57,13 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
   const weekStartsOn = (user.settings.weekStartsOn ?? 1) as WeekStart;
 
   const [accounts, { ids }] = await Promise.all([getUserAccounts(user.id), getSelectedAccountIds(user.id)]);
-  const [series, month, recent, breakdowns] = await Promise.all([
+  const hasOpen = accounts.some((a) => ids.includes(a.id) && (a.openPositions?.length ?? 0) > 0);
+  const [series, month, recent, breakdowns, benchmark] = await Promise.all([
     getDailyPnl(ids, from, today),
     getDailyPnl(ids, addDays(monthStart, -7), addDays(monthStart, 42)),
     listTrades(user.id, ids, parseTradeFilters({}), user.timezone, 7),
     getBreakdowns(user.id, ids, from, user.timezone),
+    hasOpen ? getHoldBenchmarks(user.id, ids) : Promise.resolve(undefined),
   ]);
   const { currency, days } = series;
   const s = summarizeDays(days);
@@ -137,7 +140,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
         </StaggerItem>
       </Stagger>
 
-      <OpenPositions accounts={accounts.filter((a) => ids.includes(a.id))} timezone={user.timezone} />
+      <OpenPositions accounts={accounts.filter((a) => ids.includes(a.id))} timezone={user.timezone} benchmark={benchmark} />
 
       {s.trades === 0 ? (
         <GettingStarted hasAccount={accounts.length > 0} />

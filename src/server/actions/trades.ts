@@ -39,6 +39,8 @@ const journalSchema = z.object({
   sl: z.number().positive().nullable(),
   isBacktest: z.boolean(),
   tagIds: z.array(z.string()).max(50),
+  /** Setup checklist for this trade: item → met. */
+  checklist: z.record(z.string().max(300), z.boolean()).nullable().default(null),
 });
 
 export type JournalInput = z.infer<typeof journalSchema>;
@@ -69,6 +71,7 @@ export async function saveTradeJournal(tradeId: string, input: JournalInput) {
         sl: data.sl,
         rMultiple: computeRMultiple(t.side, t.openPrice, t.closePrice, data.sl),
         isBacktest: data.isBacktest,
+        checklist: data.setupId && data.checklist && Object.keys(data.checklist).length ? data.checklist : null,
       })
       .where(eq(trade.id, tradeId));
     await tx.delete(tradeTag).where(eq(tradeTag.tradeId, tradeId));

@@ -11,7 +11,14 @@ import { Combobox } from "@/components/ui/combobox";
 import { Field, Input } from "@/components/ui/input";
 import { COMMON_TIMEZONES, CURRENCIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { deleteMyAccount, saveNotificationSettings, saveProfile, sendWeeklyReportNow, type ProfileState } from "@/server/actions/profile";
+import {
+  deleteMyAccount,
+  saveDisciplineSettings,
+  saveNotificationSettings,
+  saveProfile,
+  sendWeeklyReportNow,
+  type ProfileState,
+} from "@/server/actions/profile";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const noop = () => () => {};
@@ -24,6 +31,7 @@ export function SettingsForm(props: {
   weekStartsOn: number;
   emailWeeklyReport: boolean;
   emailGoalAlerts: boolean;
+  cooldownMinutes: number;
 }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(saveProfile, {});
   const zones = COMMON_TIMEZONES.includes(props.timezone) ? COMMON_TIMEZONES : [props.timezone, ...COMMON_TIMEZONES];
@@ -83,6 +91,7 @@ export function SettingsForm(props: {
           </form>
         </CardContent>
       </Card>
+      <Discipline cooldown={props.cooldownMinutes} />
       <Notifications weekly={props.emailWeeklyReport} alerts={props.emailGoalAlerts} email={props.email} />
       <YourData email={props.email} />
       <Card>
@@ -279,5 +288,45 @@ function ThemePicker() {
         );
       })}
     </div>
+  );
+}
+
+function Discipline({ cooldown }: { cooldown: number }) {
+  const [value, setValue] = useState(String(cooldown));
+  const [pending, start] = useTransition();
+  return (
+    <Card>
+      <CardHeader className="flex-col gap-1">
+        <CardTitle>Trading discipline</CardTitle>
+        <CardDescription>
+          After a losing trade, Journal shows a cooldown banner, and any trade opened during it is flagged as a possible revenge trade.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Field label="Cooldown after a loss" htmlFor="cooldown" hint="30 minutes is a common rule. Off still flags trades opened within 30 minutes.">
+          <Combobox
+            id="cooldown"
+            value={value}
+            disabled={pending}
+            className="sm:w-1/2"
+            onValueChange={(v) => {
+              setValue(v);
+              start(async () => {
+                await saveDisciplineSettings({ cooldownMinutes: Number(v) });
+                toast.success(v === "0" ? "Cooldown turned off" : `Cooldown set to ${v} minutes`);
+              });
+            }}
+            options={[
+              { value: "0", label: "Off" },
+              { value: "15", label: "15 minutes" },
+              { value: "30", label: "30 minutes (recommended)" },
+              { value: "45", label: "45 minutes" },
+              { value: "60", label: "1 hour" },
+              { value: "120", label: "2 hours" },
+            ]}
+          />
+        </Field>
+      </CardContent>
+    </Card>
   );
 }
