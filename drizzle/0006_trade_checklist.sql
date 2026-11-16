@@ -1,1 +1,1 @@
-ALTER TABLE "trade" ADD COLUMN "checklist" jsonb;
+ALTER TABLE "trade" ADD COLUMN IF NOT EXISTS "checklist" jsonb;
