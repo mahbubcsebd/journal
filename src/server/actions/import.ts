@@ -151,9 +151,11 @@ export async function commitImport(formData: FormData): Promise<ImportResult> {
     };
   }
 
-  const res = await upsertTrades(u.id, account.id, "IMPORT", report.trades);
-  await insertDeals(account.id, "IMPORT", report.deals);
-  const transactions = await insertTransactions(account.id, report.transactions);
+  // Backtests only add trades: their deposits and deals would distort the live account.
+  const backtest = formData.get("backtest") === "1";
+  const res = await upsertTrades(u.id, account.id, "IMPORT", report.trades, { backtest });
+  if (!backtest) await insertDeals(account.id, "IMPORT", report.deals);
+  const transactions = backtest ? 0 : await insertTransactions(account.id, report.transactions);
   await rebuildDailyStats(account.id);
   await db
     .update(tradingAccount)
@@ -167,7 +169,7 @@ export async function commitImport(formData: FormData): Promise<ImportResult> {
     accountId: account.id,
     source: "IMPORT",
     status: "OK",
-    message: `${res.inserted} new, ${res.updated} updated, ${res.skipped} skipped (${report.format})`,
+    message: `${res.inserted} new, ${res.updated} updated, ${res.skipped} skipped (${report.format}${backtest ? ", backtest" : ""})`,
     itemCount: res.inserted + res.updated,
   });
 

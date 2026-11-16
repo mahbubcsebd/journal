@@ -50,7 +50,9 @@ export async function existingPositionIds(accountId: string, ids: string[]) {
  * Insert or refresh trades. Market data (prices, P&L, close) is overwritten by
  * the broker's version; journal fields (notes, tags, rating, setup) are kept.
  */
-export async function upsertTrades(userId: string, accountId: string, source: Source, trades: TradeInput[]) {
+export async function upsertTrades(userId: string, accountId: string, source: Source, trades: TradeInput[], opts: { backtest?: boolean } = {}) {
+  // Backtest imports mark new rows; an existing live trade is never flipped.
+  const row = (t: TradeInput) => ({ ...tradeRow(userId, accountId, source, t), ...(opts.backtest ? { isBacktest: true } : {}) });
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
@@ -59,7 +61,7 @@ export async function upsertTrades(userId: string, accountId: string, source: So
   const withoutId = trades.filter((t) => !t.positionId);
 
   for (let i = 0; i < withId.length; i += 500) {
-    const chunk = withId.slice(i, i + 500).map((t) => tradeRow(userId, accountId, source, t));
+    const chunk = withId.slice(i, i + 500).map(row);
     const res = await db
       .insert(trade)
       .values(chunk)
@@ -110,7 +112,7 @@ export async function upsertTrades(userId: string, accountId: string, source: So
       skipped++;
       continue;
     }
-    await db.insert(trade).values(tradeRow(userId, accountId, source, t));
+    await db.insert(trade).values(row(t));
     inserted++;
   }
 

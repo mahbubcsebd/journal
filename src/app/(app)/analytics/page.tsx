@@ -4,11 +4,12 @@ import { BreakdownTable } from "@/components/analytics/breakdown-table";
 import { AnalyticsTabs } from "@/components/analytics/analytics-tabs";
 import { ANALYTICS_TABS, type AnalyticsTab } from "@/components/analytics/tabs";
 import { MonthlyGrid } from "@/components/analytics/monthly-grid";
+import Link from "next/link";
 import { pnlText } from "@/components/calendar/pnl-style";
 import { BreakdownChart } from "@/components/charts/breakdown-chart";
 import { EquityChart } from "@/components/charts/equity-chart";
 import { HistogramChart } from "@/components/charts/histogram-chart";
-import { DurationScatter } from "@/components/charts/scatter-chart";
+import { DurationScatter, HourScatter } from "@/components/charts/scatter-chart";
 import { PageHeader } from "@/components/layout/page-header";
 import { RangeTabs } from "@/components/layout/range-tabs";
 import { FadeIn } from "@/components/motion/fade-in";
@@ -32,7 +33,9 @@ import { equityCurve, maxDrawdown } from "@/lib/stats";
 import { formatDuration, SESSION_LABEL } from "@/lib/trading/metrics";
 import { getSelectedAccountIds, requireUser } from "@/lib/session";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
-import { getAnalyticsTrades } from "@/server/queries/analytics";
+import { getAnalyticsTrades, getOpenTradeCount } from "@/server/queries/analytics";
+import { getJournalDays } from "@/server/queries/journal";
+import { detailedStats } from "@/lib/detailed-stats";
 
 export const metadata: Metadata = { title: "Analytics" };
 
@@ -83,7 +86,11 @@ async function Analytics({ searchParams }: { searchParams: PageProps<"/analytics
   const today = todayIn(user.timezone);
   const from = rangeStart(range, today);
   const { ids } = await getSelectedAccountIds(user.id);
-  const { currency, trades } = await getAnalyticsTrades(user.id, ids, from, today, user.timezone);
+  const [{ currency, trades }, openTrades, journal] = await Promise.all([
+    getAnalyticsTrades(user.id, ids, from, today, user.timezone),
+    tab === "overview" ? getOpenTradeCount(user.id, ids) : Promise.resolve(0),
+    tab === "overview" ? getJournalDays(user.id, from ?? "1970-01-01", today) : Promise.resolve(new Map()),
+  ]);
   const weekStartsOn = (user.settings.weekStartsOn ?? 1) as WeekStart;
 
   return (
@@ -91,7 +98,7 @@ async function Analytics({ searchParams }: { searchParams: PageProps<"/analytics
       <PageHeader
         title="Analytics"
         description={`${trades.length} closed trades · ${from ? `${formatDay(from, { month: "short", day: "numeric", year: "numeric" })} – today` : "all time"}`}
-        actions={<RangeTabs active={range} basePath="/analytics" fallback="90d" params={tab === "overview" ? {} : { tab }} />}
+        actions={<RangeTabs active={range} basePath="/analytics" fallback="90d" params={tab === "overview" ? {} : tab === "time" && sp.by === "exit" ? { tab, by: "exit" } : { tab }} />}
       />
       <AnalyticsTabs active={tab} range={range} />
       {trades.length === 0 ? (
@@ -100,8 +107,8 @@ async function Analytics({ searchParams }: { searchParams: PageProps<"/analytics
         </Card>
       ) : (
         <FadeIn key={tab} className="grid gap-6">
-          {tab === "overview" && <Overview trades={trades} currency={currency} />}
-          {tab === "time" && <TimeTab trades={trades} currency={currency} weekStartsOn={weekStartsOn} />}
+          {tab === "overview" && <Overview trades={trades} currency={currency} openTrades={openTrades} loggedDays={journal.size} />}
+          {tab === "time" && <TimeTab trades={trades} currency={currency} weekStartsOn={weekStartsOn} by={sp.by === "exit" ? "exit" : "entry"} range={range} />}
           {tab === "instruments" && <InstrumentsTab trades={trades} currency={currency} />}
           {tab === "journal" && <JournalTab trades={trades} currency={currency} />}
           {tab === "risk" && <RiskTab trades={trades} currency={currency} />}
@@ -126,7 +133,7 @@ function dailyFromTrades(trades: ATrade[]) {
 
 /* ─────────────────────────────── Overview ─────────────────────────────── */
 
-function Overview({ trades, currency }: { trades: ATrade[]; currency: string }) {
+function Overview({ trades, currency, openTrades, loggedDays }: { trades: ATrade[]; currency: string; openTrades: number; loggedDays: number }) {
   const p = performance(trades);
   const days = dailyFromTrades(trades);
   const curve = equityCurve(days);
@@ -167,6 +174,9 @@ function Overview({ trades, currency }: { trades: ATrade[]; currency: string }) 
       <Panel title="Equity curve" description="Cumulative net P&L and drawdown">
         <EquityChart data={curve} currency={currency} />
       </Panel>
+      <Panel title="Statistics" description="Every number, trade by trade and day by day" flush>
+        <StatisticsSheet trades={trades} currency={currency} openTrades={openTrades} loggedDays={loggedDays} />
+      </Panel>
       <Panel title="Monthly returns" description="Net P&L per calendar month">
         <MonthlyGrid months={monthly(days)} currency={currency} />
       </Panel>
@@ -176,11 +186,28 @@ function Overview({ trades, currency }: { trades: ATrade[]; currency: string }) 
 
 /* ───────────────────────────────── Time ───────────────────────────────── */
 
-function TimeTab({ trades, currency, weekStartsOn }: { trades: ATrade[]; currency: string; weekStartsOn: WeekStart }) {
+function TimeTab({
+  trades,
+  currency,
+  weekStartsOn,
+  by,
+  range,
+}: {
+  trades: ATrade[];
+  currency: string;
+  weekStartsOn: WeekStart;
+  by: "entry" | "exit";
+  range: string;
+}) {
+  const exit = by === "exit";
+  const hourOf = (t: ATrade) => (exit ? (t.closeHour ?? t.hour) : t.hour);
+  const dayOf = (t: ATrade) => (exit ? (t.closeWeekday ?? t.weekday) : t.weekday);
   const hours = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
-  const byHour = groupBy(trades, (t) => String(t.hour).padStart(2, "0"), hours);
+  const byHour = groupBy(trades, (t) => String(hourOf(t)).padStart(2, "0"), hours);
   const dayNames = weekdayLabels(weekStartsOn);
-  const byWeekday = groupBy(trades, (t) => weekdayLabels(0)[t.weekday], dayNames);
+  const byWeekday = groupBy(trades, (t) => weekdayLabels(0)[dayOf(t)], dayNames);
+  const scatter = trades.map((t) => ({ x: (exit ? t.closeTimeOfDay : t.openTimeOfDay) ?? hourOf(t), y: t.net, symbol: t.symbol, id: t.id }));
+  const label = exit ? "Exit time" : "Entry time";
   const sessions = Object.entries(SESSION_LABEL);
   const bySession = groupBy(trades, (t) => (t.session ? SESSION_LABEL[t.session as keyof typeof SESSION_LABEL] : null), sessions.map(([, v]) => v));
   const byDuration = groupBy(trades, (t) => durationBucket(t.durationSec), DURATION_BUCKETS.map((b) => b.key));
@@ -189,11 +216,36 @@ function TimeTab({ trades, currency, weekStartsOn }: { trades: ATrade[]; currenc
 
   return (
     <>
-      <Panel title="Hour of day" description="By the hour you opened the trade, in your timezone">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-muted-foreground">Group by</span>
+        <div className="inline-flex h-9 items-center rounded-lg border bg-card p-0.5">
+          {(["entry", "exit"] as const).map((b) => (
+            <Link
+              key={b}
+              href={`/analytics?tab=time${range !== "90d" ? `&range=${range}` : ""}${b === "exit" ? "&by=exit" : ""}`}
+              scroll={false}
+              className={cn(
+                "h-full rounded-md px-3 text-[13px] leading-8 font-medium transition",
+                by === b ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {b === "entry" ? "Entry time" : "Exit time"}
+            </Link>
+          ))}
+        </div>
+      </div>
+      <Panel title="Hour of day" description={`By the hour you ${exit ? "closed" : "opened"} the trade, in your timezone`}>
         <BreakdownChart rows={byHour} currency={currency} height={240} />
       </Panel>
+      <Panel title={`Performance by ${label.toLowerCase()}`} description="Each dot is a trade: when it happened and what it made">
+        <HourScatter points={scatter} currency={currency} label={label} />
+        <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-up" /> Win</span>
+          <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-down" /> Loss</span>
+        </div>
+      </Panel>
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Day of week" description="By the day you opened the trade">
+        <Panel title="Day of week" description={`By the day you ${exit ? "closed" : "opened"} the trade`}>
           <BreakdownChart rows={byWeekday} currency={currency} />
         </Panel>
         <Panel title="Session" description="Asia, London, New York and their overlap (UTC hours)">
@@ -340,5 +392,68 @@ function RiskTab({ trades, currency }: { trades: ATrade[]; currency: string }) {
         <BreakdownTable rows={byVolume} currency={currency} label="Lots" />
       </Panel>
     </>
+  );
+}
+
+function StatisticsSheet({ trades, currency, openTrades, loggedDays }: { trades: ATrade[]; currency: string; openTrades: number; loggedDays: number }) {
+  const { trade: t, day: d } = detailedStats(trades, { openTrades, loggedDays });
+  const m = (n: number | null) => (n == null ? "—" : formatMoney(n, currency, { sign: n !== 0 }));
+  const num = (n: number | null) => (n == null ? "—" : n.toLocaleString());
+  const left: [string, string, number?][] = [
+    ["Total P&L", m(t.totalPnl), t.totalPnl],
+    ["Average daily volume", t.avgDailyVolume == null ? "—" : `${t.avgDailyVolume} lots`],
+    ["Average winning trade", m(t.avgWinningTrade), t.avgWinningTrade ?? 0],
+    ["Average losing trade", m(t.avgLosingTrade), t.avgLosingTrade ?? 0],
+    ["Total number of trades", num(t.totalTrades)],
+    ["Number of winning trades", num(t.winningTrades)],
+    ["Number of losing trades", num(t.losingTrades)],
+    ["Number of breakeven trades", num(t.breakevenTrades)],
+    ["Max consecutive wins", num(t.maxConsecutiveWins)],
+    ["Max consecutive losses", num(t.maxConsecutiveLosses)],
+    ["Total commissions", m(t.totalCommission)],
+    ["Total swap", m(t.totalSwap)],
+    ["Largest profit", m(t.largestProfit), t.largestProfit ?? 0],
+    ["Largest loss", m(t.largestLoss), t.largestLoss ?? 0],
+    ["Average hold time (all trades)", formatDuration(t.avgHoldAll)],
+    ["Average hold time (winning trades)", formatDuration(t.avgHoldWinning)],
+    ["Average hold time (losing trades)", formatDuration(t.avgHoldLosing)],
+    ["Average hold time (breakeven trades)", formatDuration(t.avgHoldBreakeven)],
+    ["Average trade P&L", m(t.avgTradePnl), t.avgTradePnl ?? 0],
+    ["Profit factor", t.profitFactor == null ? "—" : t.profitFactor.toFixed(2)],
+  ];
+  const right: [string, string, number?][] = [
+    ["Open trades", num(d.openTrades)],
+    ["Total trading days", num(d.tradingDays)],
+    ["Winning days", num(d.winningDays)],
+    ["Losing days", num(d.losingDays)],
+    ["Breakeven days", num(d.breakevenDays)],
+    ["Logged days (journal)", num(d.loggedDays)],
+    ["Max consecutive winning days", num(d.maxConsecutiveWinningDays)],
+    ["Max consecutive losing days", num(d.maxConsecutiveLosingDays)],
+    ["Average daily P&L", m(d.avgDailyPnl), d.avgDailyPnl ?? 0],
+    ["Average winning day P&L", m(d.avgWinningDayPnl), d.avgWinningDayPnl ?? 0],
+    ["Average losing day P&L", m(d.avgLosingDayPnl), d.avgLosingDayPnl ?? 0],
+    ["Largest profitable day", m(d.largestProfitableDay), d.largestProfitableDay ?? 0],
+    ["Largest losing day", m(d.largestLosingDay), d.largestLosingDay ?? 0],
+    ["Average realized R-multiple", d.avgRealizedR == null ? "—" : `${d.avgRealizedR.toFixed(2)}R`],
+    ["Trade expectancy", m(d.expectancy), d.expectancy],
+    ["Max drawdown", m(d.maxDrawdown), d.maxDrawdown],
+    ["Average drawdown", m(d.avgDrawdown), d.avgDrawdown ?? 0],
+  ];
+  const column = (rows: typeof left) => (
+    <dl className="divide-y">
+      {rows.map(([k, v, tone]) => (
+        <div key={k} className="flex items-baseline justify-between gap-4 px-5 py-2.5 text-sm">
+          <dt className="text-muted-foreground">{k}</dt>
+          <dd className={cn("text-right font-mono font-medium tabular", tone != null && tone !== 0 && pnlText(tone))}>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+  return (
+    <div className="grid border-t md:grid-cols-2 md:divide-x">
+      {column(left)}
+      <div className="border-t md:border-t-0">{column(right)}</div>
+    </div>
   );
 }

@@ -3,16 +3,59 @@ import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { dailyStat, trade, tradingAccount, transaction } from "@/db/schema";
 import type { DailyPoint } from "@/lib/stats";
+import type { DataMode } from "@/lib/session";
+import { backtestCond, currentBacktestCond } from "./mode";
 import { getReportingCurrency } from "./stats";
 
 const usdScale = (currency: string) =>
   currency === "USC" ? sql`1` : sql`(case when ${tradingAccount.currency} = 'USC' then 0.01 else 1 end)`;
 
 /** Net P&L per trading day across the given accounts, in one reporting currency. */
-export async function getDailyPnl(accountIds: string[], from?: string, to?: string) {
+export async function getDailyPnl(accountIds: string[], from?: string, to?: string, opts: { tz?: string; mode?: DataMode } = {}) {
   const currency = await getReportingCurrency(accountIds);
   if (accountIds.length === 0) return { currency, days: [] as DailyPoint[] };
   const fx = usdScale(currency);
+  // daily_stat only holds live trades; backtests are aggregated on the fly.
+  const mode = opts.mode ?? "live";
+  if (mode !== "live" && opts.tz) {
+    const day = sql<string>`to_char(${trade.closeTime} at time zone ${opts.tz}, 'YYYY-MM-DD')`;
+    const net = sql`${trade.netPnl} * ${fx}`;
+    const rows = await db
+      .select({
+        day,
+        net: sql<string>`sum(${net})`,
+        trades: sql<string>`count(*)`,
+        wins: sql<string>`count(*) filter (where ${trade.netPnl} > 0)`,
+        losses: sql<string>`count(*) filter (where ${trade.netPnl} < 0)`,
+        gp: sql<string>`coalesce(sum(${net}) filter (where ${trade.netPnl} > 0), 0)`,
+        gl: sql<string>`coalesce(sum(${net}) filter (where ${trade.netPnl} < 0), 0)`,
+      })
+      .from(trade)
+      .innerJoin(tradingAccount, eq(tradingAccount.id, trade.accountId))
+      .where(
+        and(
+          inArray(trade.accountId, accountIds),
+          eq(trade.status, "CLOSED"),
+          backtestCond(mode),
+          from ? sql`(${trade.closeTime} at time zone ${opts.tz})::date >= ${from}::date` : undefined,
+          to ? sql`(${trade.closeTime} at time zone ${opts.tz})::date <= ${to}::date` : undefined,
+        ),
+      )
+      .groupBy(sql`1`)
+      .orderBy(sql`1`);
+    return {
+      currency,
+      days: rows.map((r) => ({
+        day: r.day,
+        net: Math.round(Number(r.net) * 100) / 100,
+        trades: Number(r.trades),
+        wins: Number(r.wins),
+        losses: Number(r.losses),
+        grossProfit: Number(r.gp),
+        grossLoss: Number(r.gl),
+      })),
+    };
+  }
   const rows = await db
     .select({
       day: dailyStat.day,
@@ -80,7 +123,7 @@ export async function getClosedTrades(userId: string, accountIds: string[], from
         eq(trade.userId, userId),
         inArray(trade.accountId, accountIds),
         eq(trade.status, "CLOSED"),
-        eq(trade.isBacktest, false),
+        await currentBacktestCond(),
         sql`(${trade.closeTime} at time zone ${tz})::date between ${from}::date and ${to}::date`,
       ),
     )
@@ -97,7 +140,7 @@ export async function getBreakdowns(userId: string, accountIds: string[], from: 
     eq(trade.userId, userId),
     inArray(trade.accountId, accountIds),
     eq(trade.status, "CLOSED"),
-    eq(trade.isBacktest, false),
+    await currentBacktestCond(),
     from ? sql`(${trade.closeTime} at time zone ${tz})::date >= ${from}::date` : undefined,
   );
   const agg = {
@@ -164,7 +207,7 @@ export async function getOpenedTrades(userId: string, accountIds: string[], day:
       and(
         eq(trade.userId, userId),
         inArray(trade.accountId, accountIds),
-        eq(trade.isBacktest, false),
+        await currentBacktestCond(),
         sql`(${trade.openTime} at time zone ${tz})::date = ${day}::date`,
       ),
     )
@@ -212,7 +255,7 @@ export async function getOpenedByDay(userId: string, accountIds: string[], from:
       and(
         eq(trade.userId, userId),
         inArray(trade.accountId, accountIds),
-        eq(trade.isBacktest, false),
+        await currentBacktestCond(),
         sql`(${trade.openTime} at time zone ${tz})::date between ${from}::date and ${to}::date`,
       ),
     )

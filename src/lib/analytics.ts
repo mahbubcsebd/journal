@@ -25,6 +25,11 @@ export type ATrade = {
   accountName: string;
   openAt: number; // epoch ms
   closeAt: number; // epoch ms
+  /** Close hour / weekday in user tz, and both times of day as fractional hours (9.5 = 09:30). */
+  closeHour?: number;
+  closeWeekday?: number;
+  openTimeOfDay?: number;
+  closeTimeOfDay?: number;
   /** Setup checklist ticked on the trade, if any. */
   checklist?: { done: number; total: number } | null;
 };

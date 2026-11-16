@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { setup, tag, trade, tradeTag, tradingAccount } from "@/db/schema";
 import type { ATrade } from "@/lib/analytics";
+import { currentBacktestCond } from "./mode";
 import { getReportingCurrency } from "./stats";
 
 /** Closed live trades in a day range, flattened for the analytics engine. */
@@ -19,12 +20,17 @@ export async function getAnalyticsTrades(
   const fx = currency === "USC" ? sql`1` : sql`(case when ${tradingAccount.currency} = 'USC' then 0.01 else 1 end)`;
   const closeDay = sql`(${trade.closeTime} at time zone ${tz})::date`;
 
+  const modeCond = await currentBacktestCond();
   const rows = await db
     .select({
       id: trade.id,
       day: sql<string>`to_char(${trade.closeTime} at time zone ${tz}, 'YYYY-MM-DD')`,
       hour: sql<number>`extract(hour from ${trade.openTime} at time zone ${tz})::int`,
       weekday: sql<number>`extract(dow from ${trade.openTime} at time zone ${tz})::int`,
+      closeHour: sql<number>`extract(hour from ${trade.closeTime} at time zone ${tz})::int`,
+      closeWeekday: sql<number>`extract(dow from ${trade.closeTime} at time zone ${tz})::int`,
+      openTimeOfDay: sql<string>`extract(hour from ${trade.openTime} at time zone ${tz}) + extract(minute from ${trade.openTime} at time zone ${tz}) / 60.0`,
+      closeTimeOfDay: sql<string>`extract(hour from ${trade.closeTime} at time zone ${tz}) + extract(minute from ${trade.closeTime} at time zone ${tz}) / 60.0`,
       symbol: trade.symbol,
       side: trade.side,
       session: trade.session,
@@ -52,7 +58,7 @@ export async function getAnalyticsTrades(
         eq(trade.userId, userId),
         inArray(trade.accountId, accountIds),
         eq(trade.status, "CLOSED"),
-        eq(trade.isBacktest, false),
+        modeCond,
         from ? sql`${closeDay} >= ${from}::date` : undefined,
         to ? sql`${closeDay} <= ${to}::date` : undefined,
         opts.setupId ? eq(trade.setupId, opts.setupId) : undefined,
@@ -79,6 +85,8 @@ export async function getAnalyticsTrades(
         : null,
       openAt: openTime.getTime(),
       closeAt: (closeTime ?? openTime).getTime(),
+      openTimeOfDay: Number(r.openTimeOfDay),
+      closeTimeOfDay: Number(r.closeTimeOfDay),
       net: Math.round(Number(r.net) * 100) / 100,
       commission: Number(r.commission),
       swap: Number(r.swap),
@@ -135,4 +143,14 @@ export async function getHoldBenchmarks(userId: string, accountIds: string[]) {
   // Too few trades make a misleading benchmark.
   if (Number(r.n) < 10) return { avgWinSec: null, avgLossSec: null };
   return { avgWinSec: r.win == null ? null : Math.round(Number(r.win)), avgLossSec: r.loss == null ? null : Math.round(Number(r.loss)) };
+}
+
+/** Open trades in the selected accounts for the current data mode. */
+export async function getOpenTradeCount(userId: string, accountIds: string[]) {
+  if (accountIds.length === 0) return 0;
+  const [r] = await db
+    .select({ n: sql<string>`count(*)` })
+    .from(trade)
+    .where(and(eq(trade.userId, userId), inArray(trade.accountId, accountIds), eq(trade.status, "OPEN"), await currentBacktestCond()));
+  return Number(r.n);
 }

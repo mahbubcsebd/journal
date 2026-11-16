@@ -12,7 +12,7 @@ import {
   todayIn,
   type WeekStart,
 } from "@/lib/dates";
-import { getSelectedAccountIds, requireUser } from "@/lib/session";
+import { getSelectedAccountIds, requireUser, getDataMode } from "@/lib/session";
 import { getClosedTrades, getDailyPnl, getOpenedByDay } from "@/server/queries/calendar";
 import { getJournalDays } from "@/server/queries/journal";
 import { CalendarShell, type CalendarView } from "./calendar-shell";
@@ -64,9 +64,9 @@ async function CalendarData({ searchParams }: { searchParams: PageProps<"/calend
     periodTo = endOfMonth(anchor);
   }
 
-  const { ids } = await getSelectedAccountIds(user.id);
+  const [{ ids }, mode] = await Promise.all([getSelectedAccountIds(user.id), getDataMode()]);
   const [{ days, currency }, trades, journal, opened] = await Promise.all([
-    getDailyPnl(ids, from, to),
+    getDailyPnl(ids, from, to, { tz: user.timezone, mode }),
     view === "week" ? getClosedTrades(user.id, ids, from, to, user.timezone) : Promise.resolve([]),
     getJournalDays(user.id, from, to),
     getOpenedByDay(user.id, ids, from, to, user.timezone),

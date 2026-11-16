@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentUser, getSelectedAccountIds, getUserAccounts } from "@/lib/session";
+import { getCurrentUser, getDataMode, getSelectedAccountIds, getUserAccounts } from "@/lib/session";
 import { todayIn } from "@/lib/dates";
 import { AccountSwitcher } from "./account-switcher";
+import { ModeSwitcher } from "./mode-switcher";
 import { CommandMenu } from "./command-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
@@ -12,6 +13,9 @@ export function Topbar() {
     <header className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-2 border-b bg-background/75 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:px-6 lg:h-16 print:hidden">
       <Suspense fallback={<Skeleton className="h-9 w-40 rounded-lg" />}>
         <AccountSwitcherSlot />
+      </Suspense>
+      <Suspense fallback={<Skeleton className="h-9 w-9 rounded-lg sm:w-24" />}>
+        <ModeSlot />
       </Suspense>
       <div className="flex-1" />
       <Suspense fallback={<Skeleton className="hidden h-9 w-56 rounded-lg md:block" />}>
@@ -61,4 +65,10 @@ async function CommandSlot() {
       accounts={accounts.map((a) => ({ id: a.id, nickname: a.nickname, login: a.login, color: a.color }))}
     />
   );
+}
+
+async function ModeSlot() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return <ModeSwitcher mode={await getDataMode()} />;
 }

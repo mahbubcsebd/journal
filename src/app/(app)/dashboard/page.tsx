@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { addDays, formatDay, todayIn, type WeekStart } from "@/lib/dates";
 import { dayStreaks, equityCurve, maxDrawdown, summarizeDays } from "@/lib/stats";
 import { parseTradeFilters } from "@/lib/trade-filters";
-import { getSelectedAccountIds, getUserAccounts, requireUser } from "@/lib/session";
+import { getSelectedAccountIds, getUserAccounts, requireUser, getDataMode } from "@/lib/session";
 import { cn, formatDateTime, formatMoney, formatPercent } from "@/lib/utils";
 import { getBreakdowns, getDailyPnl } from "@/server/queries/calendar";
 import { listTrades } from "@/server/queries/trades";
@@ -56,11 +56,12 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
   const monthStart = `${today.slice(0, 7)}-01`;
   const weekStartsOn = (user.settings.weekStartsOn ?? 1) as WeekStart;
 
-  const [accounts, { ids }] = await Promise.all([getUserAccounts(user.id), getSelectedAccountIds(user.id)]);
+  const [accounts, { ids }, mode] = await Promise.all([getUserAccounts(user.id), getSelectedAccountIds(user.id), getDataMode()]);
+  const pnl = { tz: user.timezone, mode };
   const hasOpen = accounts.some((a) => ids.includes(a.id) && (a.openPositions?.length ?? 0) > 0);
   const [series, month, recent, breakdowns, benchmark] = await Promise.all([
-    getDailyPnl(ids, from, today),
-    getDailyPnl(ids, addDays(monthStart, -7), addDays(monthStart, 42)),
+    getDailyPnl(ids, from, today, pnl),
+    getDailyPnl(ids, addDays(monthStart, -7), addDays(monthStart, 42), pnl),
     listTrades(user.id, ids, parseTradeFilters({}), user.timezone, 7),
     getBreakdowns(user.id, ids, from, user.timezone),
     hasOpen ? getHoldBenchmarks(user.id, ids) : Promise.resolve(undefined),

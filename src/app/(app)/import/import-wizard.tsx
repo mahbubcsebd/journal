@@ -37,6 +37,7 @@ export function ImportWizard({ accounts }: { accounts: Account[] }) {
   const [result, setResult] = useState<Extract<ImportResult, { ok: true }> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [backtest, setBacktest] = useState(false);
   const [pending, start] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -45,6 +46,7 @@ export function ImportWizard({ accounts }: { accounts: Account[] }) {
     fd.set("file", f);
     fd.set("accountId", acc);
     fd.set("offset", offset);
+    fd.set("backtest", backtest ? "1" : "");
     return fd;
   };
 
@@ -191,6 +193,22 @@ export function ImportWizard({ accounts }: { accounts: Account[] }) {
                   />
                 </Field>
               </div>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border bg-card p-3.5 text-sm transition hover:bg-accent/40">
+                <input
+                  type="checkbox"
+                  checked={backtest}
+                  onChange={(e) => setBacktest(e.target.checked)}
+                  className="mt-0.5 size-4 accent-[var(--brand)]"
+                />
+                <span className="grid gap-0.5">
+                  <span className="font-medium">These are backtest trades</span>
+                  <span className="text-xs text-muted-foreground">
+                    Kept out of your live stats. See them with the <b>Backtest</b> switch at the top; they also count toward setup confidence.
+                    Deposits in the file are ignored.
+                  </span>
+                </span>
+              </label>
 
               {error && (
                 <motion.div

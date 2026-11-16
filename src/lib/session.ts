@@ -8,6 +8,23 @@ import { tradingAccount, user } from "@/db/schema";
 import { auth } from "./auth";
 
 export const ACCOUNT_FILTER_COOKIE = "jr_accounts";
+export const DATA_MODE_COOKIE = "jr_mode";
+
+/** Which trades the stats use: live only (default), backtests only, or both. */
+export type DataMode = "live" | "backtest" | "all";
+
+/**
+ * The data mode picked in the top bar. Outside a request (cron, background
+ * work after a sync) there are no cookies, so it is always live.
+ */
+export const getDataMode = cache(async (): Promise<DataMode> => {
+  try {
+    const v = (await cookies()).get(DATA_MODE_COOKIE)?.value;
+    return v === "backtest" || v === "all" ? v : "live";
+  } catch {
+    return "live";
+  }
+});
 
 /** Validated session (or null). Deduped per request. */
 export const getSession = cache(async () => {

@@ -3,15 +3,17 @@ import { and, asc, desc, eq, exists, gte, ilike, inArray, lt, lte, gt, sql, type
 import { db } from "@/db";
 import { setup, tag, trade, tradeImage, tradeTag, tradingAccount } from "@/db/schema";
 import type { TradeFilters } from "@/lib/trade-filters";
+import { currentBacktestCond } from "./mode";
 import { getReportingCurrency } from "./stats";
 
 export const PAGE_SIZE = 50;
 
-function where(userId: string, accountIds: string[], f: Omit<TradeFilters, "page" | "sort" | "dir">, tz: string) {
+function where(userId: string, accountIds: string[], f: Omit<TradeFilters, "page" | "sort" | "dir">, tz: string, modeCond?: SQL) {
   const day = sql`(coalesce(${trade.closeTime}, ${trade.openTime}) at time zone ${tz})::date`;
   const conds: (SQL | undefined)[] = [
     eq(trade.userId, userId),
     inArray(trade.accountId, accountIds.length ? accountIds : ["__none__"]),
+    modeCond,
     f.symbol ? ilike(trade.symbol, `%${f.symbol}%`) : undefined,
     f.side ? eq(trade.side, f.side) : undefined,
     f.status ? eq(trade.status, f.status) : undefined,
@@ -47,7 +49,7 @@ const ORDER = {
 };
 
 export async function listTrades(userId: string, accountIds: string[], f: TradeFilters, tz: string, limit = PAGE_SIZE) {
-  const w = where(userId, accountIds, f, tz);
+  const w = where(userId, accountIds, f, tz, await currentBacktestCond());
   const orderCol = ORDER[f.sort];
   const order = f.dir === "asc" ? sql`${orderCol} asc nulls first` : sql`${orderCol} desc nulls last`;
 
@@ -114,7 +116,7 @@ export async function summarizeTrades(userId: string, accountIds: string[], f: T
     })
     .from(trade)
     .innerJoin(tradingAccount, eq(tradingAccount.id, trade.accountId))
-    .where(where(userId, accountIds, f, tz));
+    .where(where(userId, accountIds, f, tz, await currentBacktestCond()));
   const n = (v: string | null) => Number(v ?? 0);
   return {
     currency,

@@ -62,3 +62,60 @@ export function DurationScatter({ points, currency }: { points: P[]; currency: s
     </div>
   );
 }
+
+type HP = { x: number; y: number; symbol: string; id: string };
+const hh = (v: number) => `${String(Math.floor(v)).padStart(2, "0")}:${String(Math.round((v % 1) * 60)).padStart(2, "0")}`;
+
+/** Time of day (entry or exit) against net P&L, one dot per trade. */
+export function HourScatter({ points, currency, label }: { points: HP[]; currency: string; label: string }) {
+  const wins = points.filter((p) => p.y >= 0);
+  const losses = points.filter((p) => p.y < 0);
+  const xs = points.map((p) => p.x);
+  const lo = Math.max(0, Math.floor(Math.min(...xs)) - 1);
+  const hi = Math.min(24, Math.ceil(Math.max(...xs)) + 1);
+  const ticks = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).filter((h) => (hi - lo > 12 ? h % 2 === 0 : true));
+  const dot = (fill: string) =>
+    function Dot(props: { cx?: number; cy?: number }) {
+      return <circle cx={props.cx} cy={props.cy} r={4} fill={fill} fillOpacity={0.75} stroke="var(--card)" strokeWidth={1.5} />;
+    };
+  return (
+    <div className="h-64">
+      <ResponsiveContainer>
+        <RScatter margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <CartesianGrid stroke="var(--border)" />
+          <XAxis
+            dataKey="x"
+            type="number"
+            domain={[lo, hi]}
+            ticks={ticks}
+            tickFormatter={(v) => hh(v)}
+            tick={tick}
+            axisLine={false}
+            tickLine={false}
+            name={label}
+          />
+          <YAxis dataKey="y" type="number" width={64} tickFormatter={(v) => formatMoney(v, currency, { compact: true })} tick={tick} axisLine={false} tickLine={false} />
+          <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.5} />
+          <Tooltip
+            cursor={{ strokeDasharray: "3 3" }}
+            content={({ active, payload }) => {
+              const p = payload?.[0]?.payload as HP | undefined;
+              if (!active || !p) return null;
+              return (
+                <ChartTooltip
+                  title={p.symbol}
+                  rows={[
+                    { label: "Net P&L", value: formatMoney(p.y, currency, { sign: true }), tone: p.y },
+                    { label, value: hh(p.x) },
+                  ]}
+                />
+              );
+            }}
+          />
+          <Scatter name="Wins" data={wins} shape={dot("var(--chart-up)")} />
+          <Scatter name="Losses" data={losses} shape={dot("var(--chart-down)")} />
+        </RScatter>
+      </ResponsiveContainer>
+    </div>
+  );
+}
