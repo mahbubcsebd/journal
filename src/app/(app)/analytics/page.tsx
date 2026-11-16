@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BreakdownTable } from "@/components/analytics/breakdown-table";
+import { AnalyticsControls } from "@/components/analytics/analytics-controls";
 import { AnalyticsTabs } from "@/components/analytics/analytics-tabs";
+import { FavoriteStar } from "@/components/analytics/favorite-star";
 import { ANALYTICS_TABS, type AnalyticsTab } from "@/components/analytics/tabs";
 import { MonthlyGrid } from "@/components/analytics/monthly-grid";
-import Link from "next/link";
 import { pnlText } from "@/components/calendar/pnl-style";
 import { BreakdownChart } from "@/components/charts/breakdown-chart";
 import { EquityChart } from "@/components/charts/equity-chart";
 import { HistogramChart } from "@/components/charts/histogram-chart";
 import { DurationScatter, HourScatter } from "@/components/charts/scatter-chart";
 import { PageHeader } from "@/components/layout/page-header";
-import { RangeTabs } from "@/components/layout/range-tabs";
 import { FadeIn } from "@/components/motion/fade-in";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,13 +27,16 @@ import {
   volumeBucket,
   type ATrade,
 } from "@/lib/analytics";
-import { formatDay, todayIn, weekdayLabels, type WeekStart } from "@/lib/dates";
-import { parseRange, rangeStart } from "@/lib/ranges";
+import { formatDay, startOfWeek, todayIn, weekdayLabels, type WeekStart } from "@/lib/dates";
+import { activeFilterCount, allTimeBuckets, applyFilters, METRICS, parseAnalyticsQuery, timeBucket, withMetric, type Interval } from "@/lib/analytics-query";
+import { rangeStart } from "@/lib/ranges";
 import { equityCurve, maxDrawdown } from "@/lib/stats";
 import { formatDuration, SESSION_LABEL } from "@/lib/trading/metrics";
 import { getSelectedAccountIds, requireUser } from "@/lib/session";
-import { cn, formatMoney, formatPercent } from "@/lib/utils";
-import { getAnalyticsTrades, getOpenTradeCount } from "@/server/queries/analytics";
+import { cn, formatMoney, formatPercent, formatPrice } from "@/lib/utils";
+import { Star } from "lucide-react";
+import { getAnalyticsTrades, getCapitalBase, getOpenTradeCount } from "@/server/queries/analytics";
+import { getFilterOptions } from "@/server/queries/trades";
 import { getJournalDays } from "@/server/queries/journal";
 import { detailedStats } from "@/lib/detailed-stats";
 
@@ -55,14 +58,35 @@ export default function AnalyticsPage({ searchParams }: PageProps<"/analytics">)
   );
 }
 
-function Panel({ title, description, children, className, flush }: { title: string; description?: string; children: React.ReactNode; className?: string; flush?: boolean }) {
+/** Which charts are starred, and (on the Favorites tab) which ones to show. */
+type Ctx = { favorites: Set<string>; only?: Set<string> };
+
+function Panel({
+  ctx,
+  id,
+  title,
+  description,
+  children,
+  className,
+  flush,
+}: {
+  ctx: Ctx;
+  id: string;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  className?: string;
+  flush?: boolean;
+}) {
+  if (ctx.only && !ctx.only.has(id)) return null;
   return (
     <Card className={className}>
       <CardHeader>
-        <div>
+        <div className="min-w-0">
           <CardTitle>{title}</CardTitle>
           {description && <CardDescription>{description}</CardDescription>}
         </div>
+        <FavoriteStar id={id} title={title} starred={ctx.favorites.has(id)} />
       </CardHeader>
       {flush ? <div className="mt-4">{children}</div> : <CardContent>{children}</CardContent>}
     </Card>
@@ -82,36 +106,70 @@ function Stat({ label, value, tone, sub }: { label: string; value: string; tone?
 async function Analytics({ searchParams }: { searchParams: PageProps<"/analytics">["searchParams"] }) {
   const [user, sp] = await Promise.all([requireUser(), searchParams]);
   const tab = (ANALYTICS_TABS.find((t) => t.key === sp.tab)?.key ?? "overview") as AnalyticsTab;
-  const range = parseRange(sp.range, "90d");
+  const q = parseAnalyticsQuery(sp);
   const today = todayIn(user.timezone);
-  const from = rangeStart(range, today);
+  const from = q.from ?? rangeStart(q.range, today);
+  const to = q.from ? (q.to ?? today) : today;
   const { ids } = await getSelectedAccountIds(user.id);
-  const [{ currency, trades }, openTrades, journal] = await Promise.all([
-    getAnalyticsTrades(user.id, ids, from, today, user.timezone),
-    tab === "overview" ? getOpenTradeCount(user.id, ids) : Promise.resolve(0),
-    tab === "overview" ? getJournalDays(user.id, from ?? "1970-01-01", today) : Promise.resolve(new Map()),
+  const needsOverview = tab === "overview" || tab === "favorites";
+  const [{ currency, trades: all }, openTrades, journal, options, capital] = await Promise.all([
+    getAnalyticsTrades(user.id, ids, from, to, user.timezone),
+    needsOverview ? getOpenTradeCount(user.id, ids) : Promise.resolve(0),
+    needsOverview ? getJournalDays(user.id, from ?? "1970-01-01", to) : Promise.resolve(new Map()),
+    getFilterOptions(user.id),
+    needsOverview ? getCapitalBase(ids) : Promise.resolve(null),
   ]);
   const weekStartsOn = (user.settings.weekStartsOn ?? 1) as WeekStart;
+  const trades = applyFilters(all, q.filters);
+  // Overview stays in money; the other tabs follow "P&L showing".
+  const shown = withMetric(trades, q.metric);
+  const unit = q.metric === "r" ? "R" : currency;
+  const favorites = new Set(user.settings.favoriteCharts ?? []);
+  const ctx: Ctx = { favorites };
+  const favCtx: Ctx = { favorites, only: favorites };
+  const filters = activeFilterCount(q.filters);
+  const period = from
+    ? `${formatDay(from, { month: "short", day: "numeric", year: "numeric" })} – ${q.from && q.to ? formatDay(to, { month: "short", day: "numeric", year: "numeric" }) : "today"}`
+    : "all time";
+  const time = { weekStartsOn, by: q.by, interval: q.interval };
 
   return (
     <div className="grid gap-6">
       <PageHeader
         title="Analytics"
-        description={`${trades.length} closed trades · ${from ? `${formatDay(from, { month: "short", day: "numeric", year: "numeric" })} – today` : "all time"}`}
-        actions={<RangeTabs active={range} basePath="/analytics" fallback="90d" params={tab === "overview" ? {} : tab === "time" && sp.by === "exit" ? { tab, by: "exit" } : { tab }} />}
+        description={`${trades.length} closed trades · ${period}${filters ? ` · ${filters} filter${filters > 1 ? "s" : ""}` : ""}${q.metric !== "net" ? ` · in ${METRICS.find((m) => m.key === q.metric)!.label}` : ""}`}
       />
-      <AnalyticsTabs active={tab} range={range} />
-      {trades.length === 0 ? (
+      <AnalyticsControls query={q} tab={tab} options={{ symbols: options.symbols, setups: options.setups, tags: options.tags }} />
+      <AnalyticsTabs active={tab} />
+      {trades.length === 0 || (shown.length === 0 && tab !== "overview") ? (
         <Card className="px-6 py-16 text-center text-sm text-muted-foreground">
-          No closed trades in this period for the selected accounts. Try a longer range or import your history.
+          {trades.length === 0
+            ? "No closed trades match this period and these filters for the selected accounts."
+            : "None of these trades has a stop loss, so there is no R-multiple to show. Switch P&L showing to Net or Gross, or add stop losses to your trades."}
         </Card>
       ) : (
         <FadeIn key={tab} className="grid gap-6">
-          {tab === "overview" && <Overview trades={trades} currency={currency} openTrades={openTrades} loggedDays={journal.size} />}
-          {tab === "time" && <TimeTab trades={trades} currency={currency} weekStartsOn={weekStartsOn} by={sp.by === "exit" ? "exit" : "entry"} range={range} />}
-          {tab === "instruments" && <InstrumentsTab trades={trades} currency={currency} />}
-          {tab === "journal" && <JournalTab trades={trades} currency={currency} />}
-          {tab === "risk" && <RiskTab trades={trades} currency={currency} />}
+          {tab === "overview" && <Overview ctx={ctx} trades={trades} currency={currency} openTrades={openTrades} loggedDays={journal.size} capital={capital} />}
+          {tab === "time" && <TimeTab ctx={ctx} trades={shown} currency={unit} {...time} />}
+          {tab === "instruments" && <InstrumentsTab ctx={ctx} trades={shown} currency={unit} />}
+          {tab === "journal" && <JournalTab ctx={ctx} trades={shown} currency={unit} />}
+          {tab === "risk" && <RiskTab ctx={ctx} trades={shown} currency={unit} />}
+          {tab === "favorites" &&
+            (favorites.size === 0 ? (
+              <Card className="grid justify-items-center gap-2 px-6 py-16 text-center">
+                <Star className="size-7 text-muted-foreground/60" />
+                <p className="font-medium">No favorites yet</p>
+                <p className="max-w-sm text-sm text-muted-foreground">Tap the ☆ on any chart in the other tabs to pin it here.</p>
+              </Card>
+            ) : (
+              <>
+                <Overview ctx={favCtx} trades={trades} currency={currency} openTrades={openTrades} loggedDays={journal.size} capital={capital} />
+                <TimeTab ctx={favCtx} trades={shown} currency={unit} {...time} />
+                <InstrumentsTab ctx={favCtx} trades={shown} currency={unit} />
+                <JournalTab ctx={favCtx} trades={shown} currency={unit} />
+                <RiskTab ctx={favCtx} trades={shown} currency={unit} />
+              </>
+            ))}
         </FadeIn>
       )}
     </div>
@@ -133,7 +191,21 @@ function dailyFromTrades(trades: ATrade[]) {
 
 /* ─────────────────────────────── Overview ─────────────────────────────── */
 
-function Overview({ trades, currency, openTrades, loggedDays }: { trades: ATrade[]; currency: string; openTrades: number; loggedDays: number }) {
+function Overview({
+  ctx,
+  trades,
+  currency,
+  openTrades,
+  loggedDays,
+  capital,
+}: {
+  ctx: Ctx;
+  trades: ATrade[];
+  currency: string;
+  openTrades: number;
+  loggedDays: number;
+  capital: number | null;
+}) {
   const p = performance(trades);
   const days = dailyFromTrades(trades);
   const curve = equityCurve(days);
@@ -166,18 +238,20 @@ function Overview({ trades, currency, openTrades, loggedDays }: { trades: ATrade
 
   return (
     <>
-      <Card className="grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4 xl:grid-cols-5">
-        {stats.map((s) => (
-          <Stat key={s.label} {...s} />
-        ))}
-      </Card>
-      <Panel title="Equity curve" description="Cumulative net P&L and drawdown">
+      {!ctx.only && (
+        <Card className="grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4 xl:grid-cols-5">
+          {stats.map((s) => (
+            <Stat key={s.label} {...s} />
+          ))}
+        </Card>
+      )}
+      <Panel ctx={ctx} id="overview.equity-curve" title="Equity curve" description="Cumulative net P&L and drawdown">
         <EquityChart data={curve} currency={currency} />
       </Panel>
-      <Panel title="Statistics" description="Every number, trade by trade and day by day" flush>
-        <StatisticsSheet trades={trades} currency={currency} openTrades={openTrades} loggedDays={loggedDays} />
+      <Panel ctx={ctx} id="overview.statistics" title="Statistics" description="Every number, trade by trade and day by day" flush>
+        <StatisticsSheet trades={trades} currency={currency} openTrades={openTrades} loggedDays={loggedDays} capital={capital} />
       </Panel>
-      <Panel title="Monthly returns" description="Net P&L per calendar month">
+      <Panel ctx={ctx} id="overview.monthly-returns" title="Monthly returns" description="Net P&L per calendar month">
         <MonthlyGrid months={monthly(days)} currency={currency} />
       </Panel>
     </>
@@ -187,57 +261,55 @@ function Overview({ trades, currency, openTrades, loggedDays }: { trades: ATrade
 /* ───────────────────────────────── Time ───────────────────────────────── */
 
 function TimeTab({
+  ctx,
   trades,
   currency,
   weekStartsOn,
   by,
-  range,
+  interval,
 }: {
+  ctx: Ctx;
   trades: ATrade[];
   currency: string;
   weekStartsOn: WeekStart;
   by: "entry" | "exit";
-  range: string;
+  interval: Interval;
 }) {
   const exit = by === "exit";
-  const hourOf = (t: ATrade) => (exit ? (t.closeHour ?? t.hour) : t.hour);
+  const verb = exit ? "closed" : "opened";
+  const timeOf = (t: ATrade) => (exit ? (t.closeTimeOfDay ?? t.closeHour ?? t.hour) : (t.openTimeOfDay ?? t.hour));
   const dayOf = (t: ATrade) => (exit ? (t.closeWeekday ?? t.weekday) : t.weekday);
-  const hours = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
-  const byHour = groupBy(trades, (t) => String(hourOf(t)).padStart(2, "0"), hours);
+  // Only buckets between the first and last used one, so 15-minute bars stay readable.
+  const buckets = allTimeBuckets(interval);
+  const used = trades.map((t) => buckets.indexOf(timeBucket(timeOf(t), interval)));
+  const span = used.length ? buckets.slice(Math.min(...used), Math.max(...used) + 1) : buckets;
+  const byTime = groupBy(trades, (t) => timeBucket(timeOf(t), interval), span);
   const dayNames = weekdayLabels(weekStartsOn);
   const byWeekday = groupBy(trades, (t) => weekdayLabels(0)[dayOf(t)], dayNames);
-  const scatter = trades.map((t) => ({ x: (exit ? t.closeTimeOfDay : t.openTimeOfDay) ?? hourOf(t), y: t.net, symbol: t.symbol, id: t.id }));
+  const scatter = trades.map((t) => ({ x: timeOf(t), y: t.net, symbol: t.symbol, id: t.id }));
   const label = exit ? "Exit time" : "Entry time";
+  const step = interval < 60 ? `${interval} min` : interval === 60 ? "hour" : `${interval / 60} hours`;
   const sessions = Object.entries(SESSION_LABEL);
   const bySession = groupBy(trades, (t) => (t.session ? SESSION_LABEL[t.session as keyof typeof SESSION_LABEL] : null), sessions.map(([, v]) => v));
   const byDuration = groupBy(trades, (t) => durationBucket(t.durationSec), DURATION_BUCKETS.map((b) => b.key));
+  const weekOf = (day: string) => startOfWeek(day, weekStartsOn);
+  const weeks = [...new Set(trades.map((t) => weekOf(t.day)))].sort();
+  const weekLabel = (w: string) => formatDay(w, { month: "short", day: "numeric" });
+  const byWeek = groupBy(trades, (t) => weekLabel(weekOf(t.day)), weeks.map(weekLabel));
   const months = [...new Set(trades.map((t) => t.day.slice(0, 7)))].sort();
   const byMonth = groupBy(trades, (t) => formatDay(`${t.day.slice(0, 7)}-01`, { month: "short", year: "numeric" }), months.map((m) => formatDay(`${m}-01`, { month: "short", year: "numeric" })));
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Group by</span>
-        <div className="inline-flex h-9 items-center rounded-lg border bg-card p-0.5">
-          {(["entry", "exit"] as const).map((b) => (
-            <Link
-              key={b}
-              href={`/analytics?tab=time${range !== "90d" ? `&range=${range}` : ""}${b === "exit" ? "&by=exit" : ""}`}
-              scroll={false}
-              className={cn(
-                "h-full rounded-md px-3 text-[13px] leading-8 font-medium transition",
-                by === b ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {b === "entry" ? "Entry time" : "Exit time"}
-            </Link>
-          ))}
-        </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel ctx={ctx} id="time.distribution-hour" title={`Trade distribution by ${label.toLowerCase()}`} description={`How many trades you ${verb}, per ${step}`}>
+          <BreakdownChart rows={byTime} currency={currency} height={240} measure="trades" />
+        </Panel>
+        <Panel ctx={ctx} id="time.hour" title={`Performance by ${label.toLowerCase()}`} description={`Result per ${step} you ${verb} trades, in your timezone`}>
+          <BreakdownChart rows={byTime} currency={currency} height={240} />
+        </Panel>
       </div>
-      <Panel title="Hour of day" description={`By the hour you ${exit ? "closed" : "opened"} the trade, in your timezone`}>
-        <BreakdownChart rows={byHour} currency={currency} height={240} />
-      </Panel>
-      <Panel title={`Performance by ${label.toLowerCase()}`} description="Each dot is a trade: when it happened and what it made">
+      <Panel ctx={ctx} id="time.scatter" title={`Each trade by ${label.toLowerCase()}`} description="Each dot is a trade: when it happened and what it made">
         <HourScatter points={scatter} currency={currency} label={label} />
         <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-up" /> Win</span>
@@ -245,18 +317,26 @@ function TimeTab({
         </div>
       </Panel>
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Day of week" description={`By the day you ${exit ? "closed" : "opened"} the trade`}>
+        <Panel ctx={ctx} id="time.distribution-weekday" title="Trade distribution by day of week" description={`How many trades you ${verb} each day`}>
+          <BreakdownChart rows={byWeekday} currency={currency} measure="trades" />
+        </Panel>
+        <Panel ctx={ctx} id="time.weekday" title="Performance by day of week" description={`By the day you ${verb} the trade`}>
           <BreakdownChart rows={byWeekday} currency={currency} />
         </Panel>
-        <Panel title="Session" description="Asia, London, New York and their overlap (UTC hours)">
-          <BreakdownChart rows={bySession} currency={currency} />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel ctx={ctx} id="time.week" title="Performance by week" description="Result per week in this range">
+          <BreakdownChart rows={byWeek} currency={currency} />
+        </Panel>
+        <Panel ctx={ctx} id="time.month" title="Performance by month" description="Result per month in this range">
+          <BreakdownChart rows={byMonth} currency={currency} />
         </Panel>
       </div>
-      <Panel title="Hold time" description="How long trades stayed open" flush>
-        <BreakdownTable rows={byDuration} currency={currency} label="Duration" />
+      <Panel ctx={ctx} id="time.session" title="Session" description="Asia, London, New York and their overlap (UTC hours)">
+        <BreakdownChart rows={bySession} currency={currency} />
       </Panel>
-      <Panel title="Month" description="Net P&L per month in this range">
-        <BreakdownChart rows={byMonth} currency={currency} />
+      <Panel ctx={ctx} id="time.duration" title="Hold time" description="How long trades stayed open" flush>
+        <BreakdownTable rows={byDuration} currency={currency} label="Duration" />
       </Panel>
     </>
   );
@@ -264,18 +344,22 @@ function TimeTab({
 
 /* ────────────────────────────── Instruments ────────────────────────────── */
 
-function InstrumentsTab({ trades, currency }: { trades: ATrade[]; currency: string }) {
+function InstrumentsTab({ ctx, trades, currency }: { ctx: Ctx; trades: ATrade[]; currency: string }) {
   const bySymbol = groupBy(trades, (t) => t.symbol);
   const sideNet = (symbol: string, side: "LONG" | "SHORT") =>
     trades.filter((t) => t.symbol === symbol && t.side === side).reduce((s, t) => s + t.net, 0);
   const bySide = groupBy(trades, (t) => (t.side === "LONG" ? "Long" : "Short"), ["Long", "Short"]);
   const byAccount = groupBy(trades, (t) => t.accountName);
+  // Entry-price buckets only make sense within one symbol: use the most traded one.
+  const priceSymbol = bySymbol.filter((r) => r.trades >= 5).sort((a, b) => b.trades - a.trades)[0]?.key;
+  const priced = priceSymbol ? trades.filter((t) => t.symbol === priceSymbol && t.openPrice != null) : [];
+  const byPrice = priceBuckets(priced);
   return (
     <>
-      <Panel title="Symbols" description="Net P&L by instrument">
+      <Panel ctx={ctx} id="instruments.symbols" title="Symbols" description="Net P&L by instrument">
         <BreakdownChart rows={bySymbol} currency={currency} />
       </Panel>
-      <Panel title="Symbol details" flush>
+      <Panel ctx={ctx} id="instruments.symbol-details" title="Symbol details" flush>
         <BreakdownTable
           rows={bySymbol}
           currency={currency}
@@ -292,11 +376,16 @@ function InstrumentsTab({ trades, currency }: { trades: ATrade[]; currency: stri
           }}
         />
       </Panel>
+      {priceSymbol && (
+        <Panel ctx={ctx} id="instruments.price" title={`Entry price · ${priceSymbol}`} description={`Result by the price you entered at, your most traded symbol (${byPrice.reduce((s, r) => s + r.trades, 0)} trades)`}>
+          <BreakdownChart rows={byPrice} currency={currency} />
+        </Panel>
+      )}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Direction" flush>
+        <Panel ctx={ctx} id="instruments.direction" title="Direction" flush>
           <BreakdownTable rows={bySide} currency={currency} label="Side" compact />
         </Panel>
-        <Panel title="Accounts" description="Compare your Exness sub-accounts" flush>
+        <Panel ctx={ctx} id="instruments.accounts" title="Accounts" description="Compare your Exness sub-accounts" flush>
           <BreakdownTable rows={byAccount} currency={currency} label="Account" compact />
         </Panel>
       </div>
@@ -306,7 +395,7 @@ function InstrumentsTab({ trades, currency }: { trades: ATrade[]; currency: stri
 
 /* ─────────────────────────── Setups, tags, psychology ─────────────────────────── */
 
-function JournalTab({ trades, currency }: { trades: ATrade[]; currency: string }) {
+function JournalTab({ ctx, trades, currency }: { ctx: Ctx; trades: ATrade[]; currency: string }) {
   const bySetup = groupBy(trades, (t) => t.setup ?? "No setup");
   const byTag = groupBy(trades, (t) => t.tags.filter((g) => g.kind === "TAG").map((g) => g.name));
   const byMistake = groupBy(trades, (t) => t.tags.filter((g) => g.kind === "MISTAKE").map((g) => g.name));
@@ -319,6 +408,7 @@ function JournalTab({ trades, currency }: { trades: ATrade[]; currency: string }
 
   return (
     <>
+      {!ctx.only && (
       <Card className="grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4">
         <Stat label="Journaled trades" value={`${journaled} / ${trades.length}`} sub={formatPercent(journaled / trades.length, 0)} />
         <Stat label="Trades with mistakes" value={String(mistakeTrades.length)} />
@@ -329,24 +419,25 @@ function JournalTab({ trades, currency }: { trades: ATrade[]; currency: string }
           sub="Win rate"
         />
       </Card>
-      <Panel title="Setups" description="Which playbook setups actually pay" flush>
+      )}
+      <Panel ctx={ctx} id="journal.setups" title="Setups" description="Which playbook setups actually pay" flush>
         <BreakdownTable rows={bySetup} currency={currency} label="Setup" />
       </Panel>
       <div className="grid gap-6 xl:grid-cols-2">
-        <Panel title="Mistakes" description="Trades tagged with each mistake" flush>
+        <Panel ctx={ctx} id="journal.mistakes" title="Mistakes" description="Trades tagged with each mistake" flush>
           <BreakdownTable rows={byMistake} currency={currency} label="Mistake" compact />
         </Panel>
-        <Panel title="Tags" flush>
+        <Panel ctx={ctx} id="journal.tags" title="Tags" flush>
           <BreakdownTable rows={byTag} currency={currency} label="Tag" compact />
         </Panel>
-        <Panel title="Feeling before the trade" flush>
+        <Panel ctx={ctx} id="journal.feeling-before-the-trade" title="Feeling before the trade" flush>
           <BreakdownTable rows={byEmotion} currency={currency} label="Emotion" compact />
         </Panel>
-        <Panel title="Discipline" flush>
+        <Panel ctx={ctx} id="journal.discipline" title="Discipline" flush>
           <BreakdownTable rows={byPlan} currency={currency} label="Plan" compact />
         </Panel>
       </div>
-      <Panel title="Execution rating" description="Your own 1–5 star rating per trade" flush>
+      <Panel ctx={ctx} id="journal.execution-rating" title="Execution rating" description="Your own 1–5 star rating per trade" flush>
         <BreakdownTable rows={byRating} currency={currency} label="Rating" />
       </Panel>
     </>
@@ -355,7 +446,7 @@ function JournalTab({ trades, currency }: { trades: ATrade[]; currency: string }
 
 /* ───────────────────────────────── Risk ───────────────────────────────── */
 
-function RiskTab({ trades, currency }: { trades: ATrade[]; currency: string }) {
+function RiskTab({ ctx, trades, currency }: { ctx: Ctx; trades: ATrade[]; currency: string }) {
   const rs = trades.map((t) => t.rMultiple).filter((x): x is number => x != null);
   const rBins = histogram(rs, 0.5);
   const nets = trades.map((t) => t.net);
@@ -367,36 +458,63 @@ function RiskTab({ trades, currency }: { trades: ATrade[]; currency: string }) {
 
   return (
     <>
+      {!ctx.only && (
       <Card className="grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4">
         <Stat label="Trades with a stop loss" value={`${rs.length} / ${trades.length}`} sub={formatPercent(rs.length / trades.length, 0)} />
         <Stat label="Average R" value={rs.length ? `${(rs.reduce((s, x) => s + x, 0) / rs.length).toFixed(2)}R` : "—"} />
         <Stat label="Winners ≥ 2R" value={String(above2R)} />
         <Stat label="Losses beyond −1R" value={String(belowMinus1)} sub="Stop slipped or was moved" tone={belowMinus1 ? -1 : null} />
       </Card>
+      )}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="R-multiple distribution" description="Trades with an initial stop loss">
+        <Panel ctx={ctx} id="risk.r-multiple-distribution" title="R-multiple distribution" description="Trades with an initial stop loss">
           {rBins.length ? <HistogramChart bins={rBins} kind="r" /> : <p className="py-10 text-center text-sm text-muted-foreground">Add stop losses to trades to see R.</p>}
         </Panel>
-        <Panel title="P&L distribution" description="Net result per trade">
+        <Panel ctx={ctx} id="risk.p-l-distribution" title="P&L distribution" description="Net result per trade">
           <HistogramChart bins={pnlBins} kind="money" currency={currency} />
         </Panel>
       </div>
-      <Panel title="Hold time vs result" description="Each dot is a trade (log time scale)">
+      <Panel ctx={ctx} id="risk.hold-time-vs-result" title="Hold time vs result" description="Each dot is a trade (log time scale)">
         <DurationScatter points={scatter} currency={currency} />
         <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-up" /> Win</span>
           <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-down" /> Loss</span>
         </div>
       </Panel>
-      <Panel title="Position size" description="Lot size buckets" flush>
+      <Panel ctx={ctx} id="risk.position-size" title="Position size" description="Lot size buckets" flush>
         <BreakdownTable rows={byVolume} currency={currency} label="Lots" />
       </Panel>
     </>
   );
 }
 
-function StatisticsSheet({ trades, currency, openTrades, loggedDays }: { trades: ATrade[]; currency: string; openTrades: number; loggedDays: number }) {
-  const { trade: t, day: d } = detailedStats(trades, { openTrades, loggedDays });
+/** Entry-price ranges (about 8) for one symbol's trades. */
+function priceBuckets(trades: ATrade[]) {
+  const prices = trades.map((t) => t.openPrice!).filter((x) => Number.isFinite(x));
+  if (prices.length === 0) return [];
+  const size = niceBin(prices, 8) || 1;
+  const lo = Math.floor(Math.min(...prices) / size) * size;
+  const label = (b: number) => `${formatPrice(b)}–${formatPrice(b + size)}`;
+  const keys: string[] = [];
+  for (let b = lo; b <= Math.max(...prices); b += size) keys.push(label(b));
+  return groupBy(trades, (t) => label(Math.floor(t.openPrice! / size) * size), keys);
+}
+
+function StatisticsSheet({
+  trades,
+  currency,
+  openTrades,
+  loggedDays,
+  capital,
+}: {
+  trades: ATrade[];
+  currency: string;
+  openTrades: number;
+  loggedDays: number;
+  capital: number | null;
+}) {
+  const { trade: t, day: d } = detailedStats(trades, { openTrades, loggedDays, capital });
+  const pct = (n: number | null) => (n == null ? "—" : `${(n * 100).toFixed(2)}%`);
   const m = (n: number | null) => (n == null ? "—" : formatMoney(n, currency, { sign: n !== 0 }));
   const num = (n: number | null) => (n == null ? "—" : n.toLocaleString());
   const left: [string, string, number?][] = [
@@ -411,6 +529,7 @@ function StatisticsSheet({ trades, currency, openTrades, loggedDays }: { trades:
     ["Max consecutive wins", num(t.maxConsecutiveWins)],
     ["Max consecutive losses", num(t.maxConsecutiveLosses)],
     ["Total commissions", m(t.totalCommission)],
+    ["Total fees", m(t.totalFees)],
     ["Total swap", m(t.totalSwap)],
     ["Largest profit", m(t.largestProfit), t.largestProfit ?? 0],
     ["Largest loss", m(t.largestLoss), t.largestLoss ?? 0],
@@ -435,10 +554,13 @@ function StatisticsSheet({ trades, currency, openTrades, loggedDays }: { trades:
     ["Average losing day P&L", m(d.avgLosingDayPnl), d.avgLosingDayPnl ?? 0],
     ["Largest profitable day", m(d.largestProfitableDay), d.largestProfitableDay ?? 0],
     ["Largest losing day", m(d.largestLosingDay), d.largestLosingDay ?? 0],
+    ["Average planned R-multiple", d.avgPlannedR == null ? "—" : `${d.avgPlannedR.toFixed(2)}R`],
     ["Average realized R-multiple", d.avgRealizedR == null ? "—" : `${d.avgRealizedR.toFixed(2)}R`],
     ["Trade expectancy", m(d.expectancy), d.expectancy],
     ["Max drawdown", m(d.maxDrawdown), d.maxDrawdown],
+    ["Max drawdown, %", pct(d.maxDrawdownPct), d.maxDrawdownPct ?? 0],
     ["Average drawdown", m(d.avgDrawdown), d.avgDrawdown ?? 0],
+    ["Average drawdown, %", pct(d.avgDrawdownPct), d.avgDrawdownPct ?? 0],
   ];
   const column = (rows: typeof left) => (
     <dl className="divide-y">

@@ -30,6 +30,11 @@ export type ATrade = {
   closeWeekday?: number;
   openTimeOfDay?: number;
   closeTimeOfDay?: number;
+  /** Entry price and the reward:risk planned with SL/TP (|TP − entry| ÷ |entry − SL|). */
+  openPrice?: number;
+  plannedR?: number | null;
+  /** Broker fees inside `commission` (MT5 deal fees), already in reporting currency. */
+  fee?: number;
   /** Setup checklist ticked on the trade, if any. */
   checklist?: { done: number; total: number } | null;
 };

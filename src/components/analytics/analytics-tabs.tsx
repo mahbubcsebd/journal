@@ -2,16 +2,24 @@
 
 import { motion } from "motion/react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ANALYTICS_TABS, type AnalyticsTab } from "./tabs";
 
-export function AnalyticsTabs({ active, range }: { active: AnalyticsTab; range: string }) {
+/** Tabs that keep the range, filters and P&L measure when switching. */
+export function AnalyticsTabs({ active }: { active: AnalyticsTab }) {
+  const sp = useSearchParams();
   return (
     <nav className="-mx-1 flex gap-1 overflow-x-auto border-b px-1">
       {ANALYTICS_TABS.map((t) => {
-        const q = new URLSearchParams();
-        if (t.key !== "overview") q.set("tab", t.key);
-        if (range !== "90d") q.set("range", range);
+        const q = new URLSearchParams(sp.toString());
+        if (t.key === "overview") q.delete("tab");
+        else q.set("tab", t.key);
+        // Time-only options don't carry over.
+        if (t.key !== "time") {
+          q.delete("by");
+          q.delete("interval");
+        }
         const qs = q.toString();
         return (
           <Link

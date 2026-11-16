@@ -36,7 +36,15 @@ export function drawdownDepths(curve: { drawdown: number }[]) {
   return depths;
 }
 
-export function detailedStats(trades: ATrade[], extra: { openTrades?: number; loggedDays?: number } = {}) {
+/** Drawdown as a share of the peak (capital + profits so far), per point. */
+export function drawdownPercents(days: DailyPoint[], capital: number) {
+  return equityCurve(days, capital).map((p) => {
+    const peak = p.equity - p.drawdown;
+    return peak > 0 ? p.drawdown / peak : 0;
+  });
+}
+
+export function detailedStats(trades: ATrade[], extra: { openTrades?: number; loggedDays?: number; capital?: number | null } = {}) {
   const p = performance(trades);
   const days = dailyFromTrades(trades);
   const curve = equityCurve(days);
@@ -51,6 +59,10 @@ export function detailedStats(trades: ATrade[], extra: { openTrades?: number; lo
   const rs = trades.map((t) => t.rMultiple).filter((r): r is number => r != null);
   const streaks = dayStreaks(days);
   const depths = drawdownDepths(curve);
+  const pct = extra.capital ? drawdownPercents(days, extra.capital) : null;
+  const pctDepths = pct ? drawdownDepths(pct.map((d) => ({ drawdown: d }))) : [];
+  const planned = trades.map((t) => t.plannedR).filter((r): r is number => r != null);
+  const fees = r2(trades.reduce((s, t) => s + (t.fee ?? 0), 0));
 
   return {
     trade: {
@@ -64,7 +76,9 @@ export function detailedStats(trades: ATrade[], extra: { openTrades?: number; lo
       breakevenTrades: breakeven.length,
       maxConsecutiveWins: p.maxWins,
       maxConsecutiveLosses: p.maxLosses,
-      totalCommission: p.commission,
+      // MT5 fees are folded into commission when trades are built; split them back out.
+      totalCommission: r2(p.commission - fees),
+      totalFees: fees,
       totalSwap: p.swap,
       largestProfit: p.largestWin,
       largestLoss: p.largestLoss,
@@ -89,10 +103,13 @@ export function detailedStats(trades: ATrade[], extra: { openTrades?: number; lo
       avgLosingDayPnl: red.length ? r2(red.reduce((s, d) => s + d.net, 0) / red.length) : null,
       largestProfitableDay: green.length ? Math.max(...green.map((d) => d.net)) : null,
       largestLosingDay: red.length ? Math.min(...red.map((d) => d.net)) : null,
+      avgPlannedR: planned.length ? Math.round((planned.reduce((a, b) => a + b, 0) / planned.length) * 100) / 100 : null,
       avgRealizedR: rs.length ? Math.round((rs.reduce((a, b) => a + b, 0) / rs.length) * 100) / 100 : null,
       expectancy: p.expectancy,
       maxDrawdown: maxDrawdown(curve),
       avgDrawdown: depths.length ? r2(depths.reduce((a, b) => a + b, 0) / depths.length) : null,
+      maxDrawdownPct: pct ? Math.min(0, ...pct) : null,
+      avgDrawdownPct: pctDepths.length ? pctDepths.reduce((a, b) => a + b, 0) / pctDepths.length : null,
     },
   };
 }

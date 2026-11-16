@@ -78,6 +78,17 @@ describe("detailedStats", () => {
     });
   });
 
+  it("adds planned R, fees and drawdown % with a capital base", () => {
+    const withR = trades.map((x, i) => ({ ...x, plannedR: i === 0 ? 2 : i === 1 ? 3 : null, fee: i === 0 ? -0.5 : 0 }));
+    const d = detailedStats(withR, { capital: 1000 });
+    expect(d.day.avgPlannedR).toBe(2.5);
+    expect(d.trade.totalFees).toBe(-0.5);
+    expect(d.trade.totalCommission).toBe(-6.5);
+    // Peak 1120 (after Nov 3) → trough 1020 (Nov 5): −100 / 1120.
+    expect(d.day.maxDrawdownPct).toBeCloseTo(-100 / 1120);
+    expect(detailedStats(trades).day.maxDrawdownPct).toBeNull();
+  });
+
   it("averages drawdown episodes", () => {
     expect(drawdownDepths([{ drawdown: 0 }, { drawdown: -10 }, { drawdown: -30 }, { drawdown: 0 }, { drawdown: -5 }])).toEqual([-30, -5]);
   });

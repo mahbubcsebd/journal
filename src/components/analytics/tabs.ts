@@ -1,5 +1,6 @@
 export const ANALYTICS_TABS = [
   { key: "overview", label: "Overview" },
+  { key: "favorites", label: "★ Favorites" },
   { key: "time", label: "Time" },
   { key: "instruments", label: "Instruments" },
   { key: "journal", label: "Setups & tags" },

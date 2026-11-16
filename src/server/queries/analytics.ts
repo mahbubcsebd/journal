@@ -29,6 +29,10 @@ export async function getAnalyticsTrades(
       weekday: sql<number>`extract(dow from ${trade.openTime} at time zone ${tz})::int`,
       closeHour: sql<number>`extract(hour from ${trade.closeTime} at time zone ${tz})::int`,
       closeWeekday: sql<number>`extract(dow from ${trade.closeTime} at time zone ${tz})::int`,
+      openPrice: trade.openPrice,
+      plannedR: sql<string | null>`case when ${trade.sl} is not null and ${trade.tp} is not null and ${trade.openPrice} <> ${trade.sl}
+        then abs(${trade.tp} - ${trade.openPrice}) / abs(${trade.openPrice} - ${trade.sl}) end`,
+      fee: sql<string>`coalesce((select sum(d.fee) from deal d where d.account_id = "trade"."account_id" and d.position_id = "trade"."position_id"), 0) * ${fx}`,
       openTimeOfDay: sql<string>`extract(hour from ${trade.openTime} at time zone ${tz}) + extract(minute from ${trade.openTime} at time zone ${tz}) / 60.0`,
       closeTimeOfDay: sql<string>`extract(hour from ${trade.closeTime} at time zone ${tz}) + extract(minute from ${trade.closeTime} at time zone ${tz}) / 60.0`,
       symbol: trade.symbol,
@@ -85,6 +89,8 @@ export async function getAnalyticsTrades(
         : null,
       openAt: openTime.getTime(),
       closeAt: (closeTime ?? openTime).getTime(),
+      plannedR: r.plannedR == null ? null : Math.round(Number(r.plannedR) * 100) / 100,
+      fee: Number(r.fee),
       openTimeOfDay: Number(r.openTimeOfDay),
       closeTimeOfDay: Number(r.closeTimeOfDay),
       net: Math.round(Number(r.net) * 100) / 100,
@@ -153,4 +159,24 @@ export async function getOpenTradeCount(userId: string, accountIds: string[]) {
     .from(trade)
     .where(and(eq(trade.userId, userId), inArray(trade.accountId, accountIds), eq(trade.status, "OPEN"), await currentBacktestCond()));
   return Number(r.n);
+}
+
+/**
+ * Money the selected accounts started with, in the reporting currency: the
+ * starting balance set on each account, else its deposits. Basis for
+ * drawdown %. Null when unknown.
+ */
+export async function getCapitalBase(accountIds: string[]) {
+  if (accountIds.length === 0) return null;
+  const currency = await getReportingCurrency(accountIds);
+  const fx = currency === "USC" ? sql`1` : sql`(case when ${tradingAccount.currency} = 'USC' then 0.01 else 1 end)`;
+  const [r] = await db
+    .select({
+      base: sql<string | null>`sum(coalesce(${tradingAccount.initialBalance},
+        (select sum(x.amount) from "transaction" x where x.account_id = "trading_account"."id" and x.type = 'DEPOSIT')) * ${fx})`,
+    })
+    .from(tradingAccount)
+    .where(inArray(tradingAccount.id, accountIds));
+  const n = Number(r?.base ?? 0);
+  return n > 0 ? n : null;
 }

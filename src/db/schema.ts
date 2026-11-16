@@ -65,6 +65,8 @@ export type UserSettings = {
   aiLanguage?: "en" | "bn";
   /** Minutes after a losing trade to wait before the next one (0 = off). Default 30. */
   cooldownMinutes?: number;
+  /** Analytics charts starred into the Favorites tab. */
+  favoriteCharts?: string[];
 };
 
 export type JournalPremarket = {

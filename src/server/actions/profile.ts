@@ -118,3 +118,15 @@ export async function deleteMyAccount(confirmEmail: string): Promise<{ error?: s
   for (const c of jar.getAll()) if (c.name.includes("better-auth")) jar.delete(c.name);
   redirect("/?deleted=1");
 }
+
+/** Star or un-star an analytics chart for the Favorites tab. */
+export async function toggleFavoriteChart(id: string) {
+  const current = await getCurrentUser();
+  if (!current) redirect("/login");
+  const key = z.string().regex(/^[a-z0-9.-]{1,60}$/).parse(id);
+  const now = current.settings.favoriteCharts ?? [];
+  const next = now.includes(key) ? now.filter((x) => x !== key) : [...now, key].slice(-40);
+  await db.update(user).set({ settings: { ...current.settings, favoriteCharts: next } }).where(eq(user.id, current.id));
+  revalidatePath("/analytics");
+  return next.includes(key);
+}

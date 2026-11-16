@@ -8,14 +8,34 @@ import { ChartTooltip } from "./chart-tooltip";
 const tick = { fontSize: 11, fill: "var(--muted-foreground)" };
 
 /** Net P&L per category; bars diverge from zero so sign is read from position too. */
-export function BreakdownChart({ rows, currency, height = 220 }: { rows: GroupRow[]; currency: string; height?: number }) {
+export function BreakdownChart({
+  rows,
+  currency,
+  height = 220,
+  measure = "net",
+}: {
+  rows: GroupRow[];
+  currency: string;
+  height?: number;
+  /** "trades" draws how many trades fell in each bucket (trade distribution). */
+  measure?: "net" | "trades";
+}) {
+  const count = measure === "trades";
   return (
     <div style={{ height }}>
       <ResponsiveContainer>
         <BarChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap={rows.length > 12 ? 2 : "18%"}>
           <CartesianGrid vertical={false} stroke="var(--border)" />
-          <XAxis dataKey="key" tick={tick} axisLine={false} tickLine={false} interval={rows.length > 12 ? 1 : 0} />
-          <YAxis width={64} tickFormatter={(v) => formatMoney(v, currency, { compact: true })} tick={tick} axisLine={false} tickLine={false} />
+          <XAxis dataKey="key" tick={tick} axisLine={false} tickLine={false} interval={rows.length > 12 ? "preserveStartEnd" : 0}
+            minTickGap={10} />
+          <YAxis
+            width={count ? 36 : 64}
+            allowDecimals={!count}
+            tickFormatter={(v) => (count ? String(v) : formatMoney(v, currency, { compact: true }))}
+            tick={tick}
+            axisLine={false}
+            tickLine={false}
+          />
           <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.5} />
           <Tooltip
             cursor={{ fill: "var(--muted)", fillOpacity: 0.6 }}
@@ -35,9 +55,9 @@ export function BreakdownChart({ rows, currency, height = 220 }: { rows: GroupRo
               );
             }}
           />
-          <Bar dataKey="net" radius={[4, 4, 0, 0]} maxBarSize={40} animationDuration={600}>
+          <Bar dataKey={count ? "trades" : "net"} radius={[4, 4, 0, 0]} maxBarSize={40} animationDuration={600}>
             {rows.map((r) => (
-              <Cell key={r.key} fill={r.net >= 0 ? "var(--chart-up)" : "var(--chart-down)"} />
+              <Cell key={r.key} fill={count ? "var(--brand)" : r.net >= 0 ? "var(--chart-up)" : "var(--chart-down)"} />
             ))}
           </Bar>
         </BarChart>

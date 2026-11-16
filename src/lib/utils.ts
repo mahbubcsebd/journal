@@ -6,6 +6,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatMoney(value: number, currency = "USD", opts: { sign?: boolean; compact?: boolean } = {}) {
+  // "R" is used by analytics when P&L is shown in R-multiples.
+  if (currency === "R") return `${opts.sign && value > 0 ? "+" : ""}${value.toFixed(opts.compact ? 1 : 2)}R`;
   // Exness cent accounts report in USC (US cents): show "1,250.00 USC".
   if (currency === "USC") {
     const n = new Intl.NumberFormat("en-US", {
