@@ -60,3 +60,69 @@ export const tradeFeedbackResponseSchema = {
   },
   required: ["verdict", "score", "wentWell", "improve", "ruleCheck", "nextTime"],
 };
+
+/* ─────────────────────────── economic news explainer ─────────────────────────── */
+
+const DIRECTIONS = ["up", "down", "volatile", "neutral"] as const;
+
+export const eventAnalysisSchema = z.object({
+  headline: text(200),
+  whatItIs: text(900),
+  whyItMatters: text(900),
+  scenarios: list(
+    z.object({
+      outcome: text(120),
+      currencyEffect: text(300),
+      goldEffect: optText(300),
+      explanation: text(600),
+    }),
+    4,
+  ),
+  affected: list(
+    z.object({
+      symbol: z.string().trim().min(1).transform((s) => s.toUpperCase().slice(0, 12)),
+      direction: z
+        .string()
+        .trim()
+        .transform((d) => (DIRECTIONS.includes(d.toLowerCase() as (typeof DIRECTIONS)[number]) ? d.toLowerCase() : "volatile") as (typeof DIRECTIONS)[number]),
+      ifBetter: optText(200),
+    }),
+    6,
+  ),
+  volatility: z
+    .string()
+    .trim()
+    .transform((v) => (["low", "medium", "high"].includes(v.toLowerCase()) ? v.toLowerCase() : "medium") as "low" | "medium" | "high"),
+  tradingPlan: z.array(text(300)).min(1).transform((a) => a.slice(0, 5)),
+  caution: optText(400),
+});
+export type EventAnalysis = z.infer<typeof eventAnalysisSchema>;
+
+export const eventAnalysisResponseSchema = {
+  type: "OBJECT",
+  properties: {
+    headline: S,
+    whatItIs: S,
+    whyItMatters: S,
+    scenarios: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: { outcome: S, currencyEffect: S, goldEffect: S, explanation: S },
+        required: ["outcome", "currencyEffect", "explanation"],
+      },
+    },
+    affected: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: { symbol: S, direction: { type: "STRING", enum: ["up", "down", "volatile", "neutral"] }, ifBetter: S },
+        required: ["symbol", "direction"],
+      },
+    },
+    volatility: { type: "STRING", enum: ["low", "medium", "high"] },
+    tradingPlan: { type: "ARRAY", items: S },
+    caution: S,
+  },
+  required: ["headline", "whatItIs", "whyItMatters", "scenarios", "affected", "volatility", "tradingPlan"],
+} as const;

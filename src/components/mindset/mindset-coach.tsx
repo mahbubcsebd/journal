@@ -1,4 +1,4 @@
-import { CalendarClock, Gauge, Hourglass, ListChecks, ShieldAlert, Trophy } from "lucide-react";
+import { CalendarClock, Gauge, Hourglass, ListChecks, Newspaper, ShieldAlert, Trophy } from "lucide-react";
 import Link from "next/link";
 import { pnlFill, pnlText } from "@/components/calendar/pnl-style";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import {
   ZONE_MIN_TRADES,
   type SetupRep,
 } from "@/lib/mindset";
+import { newsTrades } from "@/lib/news";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
 
 type Props = {
@@ -26,6 +27,8 @@ type Props = {
   currency: string;
   cooldownMinutes: number;
   weekStartsOn: WeekStart;
+  /** High-impact calendar events over the trades' period, and the no-trade window. */
+  news?: { events: { id: string; title: string; currency: string; impact: string; time: Date; allDay: boolean }[]; window: { before: number; after: number } };
 };
 
 function Coach({
@@ -78,7 +81,7 @@ function RunBar({ label, current, record, tone }: { label: string; current: numb
   );
 }
 
-export function MindsetCoach({ trades, setupReps, currency, cooldownMinutes, weekStartsOn }: Props) {
+export function MindsetCoach({ trades, setupReps, currency, cooldownMinutes, weekStartsOn, news }: Props) {
   const money = (n: number) => formatMoney(n, currency, { sign: true });
   const streak = streakCheck(trades);
   const hold = holdTimes(trades);
@@ -290,6 +293,9 @@ export function MindsetCoach({ trades, setupReps, currency, cooldownMinutes, wee
           )}
         </Coach>
 
+        {/* news trades */}
+        {news && <NewsCard trades={trades} news={news} money={money} currency={currency} />}
+
         {/* 6 — heatmap (full width) */}
         <Coach icon={CalendarClock} problem="FOMO and screen-watching all day" title="When you trade best" className="lg:col-span-2">
           {!enough ? (
@@ -373,5 +379,77 @@ export function MindsetCoach({ trades, setupReps, currency, cooldownMinutes, wee
         </Coach>
       </div>
     </section>
+  );
+}
+
+function NewsCard({ trades, news, money, currency }: { trades: ATrade[]; news: NonNullable<Props["news"]>; money: (n: number) => string; currency: string }) {
+  const hits = newsTrades(trades, news.events, news.window);
+  const ids = new Set(hits.map((h) => h.trade.id));
+  const inNews = hits.map((h) => h.trade);
+  const rest = trades.filter((t) => !ids.has(t.id));
+  const stat = (ts: ATrade[]) => {
+    const wins = ts.filter((t) => t.net > 0).length;
+    const losses = ts.filter((t) => t.net < 0).length;
+    const net = ts.reduce((s, t) => s + t.net, 0);
+    return { n: ts.length, net, exp: ts.length ? net / ts.length : 0, wr: wins + losses ? wins / (wins + losses) : null };
+  };
+  const a = stat(inNews);
+  const b = stat(rest);
+  const worst = [...hits].sort((x, y) => x.trade.net - y.trade.net).slice(0, 3);
+  return (
+    <Coach icon={Newspaper} problem="Big losses around news" title="Trading the news">
+      {news.events.length === 0 ? (
+        <Empty>
+          Journal starts matching your trades with the{" "}
+          <Link href="/news" className="text-brand-ink hover:underline">
+            economic calendar
+          </Link>{" "}
+          from now on. Come back after a few releases.
+        </Empty>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-loss/30 p-3">
+              <p className="text-xs text-muted-foreground">
+                Opened {news.window.before} min before → {news.window.after} min after high-impact news
+              </p>
+              <p className="font-mono text-xl font-semibold tabular">{a.n}</p>
+              <p className={cn("text-[11px] tabular", pnlText(a.net))}>
+                {a.n ? `${money(a.net)} · ${money(a.exp)}/trade${a.wr != null ? ` · ${formatPercent(a.wr, 0)} win` : ""}` : "none"}
+              </p>
+            </div>
+            <div className="rounded-xl border p-3">
+              <p className="text-xs text-muted-foreground">All other trades</p>
+              <p className="font-mono text-xl font-semibold tabular">{b.n}</p>
+              <p className={cn("text-[11px] tabular", pnlText(b.exp))}>
+                {money(b.exp)}/trade{b.wr != null ? ` · ${formatPercent(b.wr, 0)} win` : ""}
+              </p>
+            </div>
+          </div>
+          {worst.length > 0 && worst[0].trade.net < 0 && (
+            <ul className="grid gap-1 text-sm">
+              {worst
+                .filter((h) => h.trade.net < 0)
+                .map((h) => (
+                  <li key={h.trade.id} className="flex items-baseline justify-between gap-2">
+                    <Link href={`/news/${h.event.id}`} className="truncate hover:underline">
+                      {h.trade.symbol} · {h.event.currency} {h.event.title}{" "}
+                      <span className="text-muted-foreground">({h.minutes > 0 ? "+" : ""}{h.minutes}m)</span>
+                    </Link>
+                    <span className="font-mono text-loss tabular">{money(h.trade.net)}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+          <p className="text-sm leading-relaxed">
+            {a.n >= 3 && a.exp < b.exp
+              ? `News trades cost you ${formatMoney(b.exp - a.exp, currency)} more per trade than your normal trades. Wait for the window to pass — the header countdown turns red while it's open.`
+              : a.n
+                ? "News trades aren't hurting you so far, but spreads and slippage spike — keep size small."
+                : "You stayed out of high-impact releases. That's the discipline that protects an account."}
+          </p>
+        </>
+      )}
+    </Coach>
   );
 }

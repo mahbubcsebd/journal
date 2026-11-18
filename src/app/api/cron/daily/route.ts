@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { runDailyNotifications } from "@/server/services/notifications";
+import { refreshCalendar } from "@/server/services/news";
 
 export const maxDuration = 300;
 
@@ -11,6 +12,6 @@ export async function GET(request: Request) {
   if (!secret || auth.length !== expected.length || !timingSafeEqual(Buffer.from(auth), Buffer.from(expected))) {
     return new Response("Unauthorized", { status: 401 });
   }
-  const result = await runDailyNotifications();
-  return Response.json(result);
+  const [calendar, result] = await Promise.all([refreshCalendar().catch((e) => ({ ok: false, error: String(e) })), runDailyNotifications()]);
+  return Response.json({ ...result, calendar });
 }

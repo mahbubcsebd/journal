@@ -67,6 +67,13 @@ export type UserSettings = {
   cooldownMinutes?: number;
   /** Analytics charts starred into the Favorites tab. */
   favoriteCharts?: string[];
+  /** Economic news: lowest impact to show/alert (default High). */
+  newsImpact?: "High" | "Medium" | "Low";
+  /** Currencies to watch; empty/undefined = from traded symbols (+ USD). "ALL" = every currency. */
+  newsCurrencies?: string[];
+  /** No-trade window around high-impact news, in minutes (defaults 15 / 15). */
+  newsBefore?: number;
+  newsAfter?: number;
 };
 
 export type JournalPremarket = {
@@ -545,6 +552,30 @@ export const notificationLog = pgTable(
   },
   (t) => [uniqueIndex("notification_log_uq").on(t.userId, t.kind, t.key)],
 );
+
+/** Economic calendar (shared by every user), refreshed from the weekly feed. */
+export const economicEvent = pgTable(
+  "economic_event",
+  {
+    /** Stable hash of title + currency + scheduled time. */
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    currency: text("currency").notNull(),
+    impact: text("impact").notNull(), // High | Medium | Low | Holiday
+    time: timestamp("time", { withTimezone: true }).notNull(),
+    /** No exact time (e.g. "All Day", "Tentative"). */
+    allDay: boolean("all_day").notNull().default(false),
+    forecast: text("forecast"),
+    previous: text("previous"),
+    actual: text("actual"),
+    source: text("source").notNull().default("forexfactory"),
+    /** AI explanation per language: { en?: EventAnalysis, bn?: EventAnalysis }. */
+    analysis: jsonb("analysis").$type<Record<string, unknown>>(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("economic_event_time_idx").on(t.time)],
+);
+export type EconomicEvent = typeof economicEvent.$inferSelect;
 
 export const aiInsight = pgTable("ai_insight", {
   id: id(),

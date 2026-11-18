@@ -71,6 +71,7 @@ chole, tai app er kono shomossa hoy na.
 | `ENCRYPTION_KEY` | `openssl rand -base64 32` er output |
 | `GEMINI_API_KEY` | *(optional)* <https://aistudio.google.com> → Get API key |
 | `GEMINI_MODEL` | *(optional)* khali rakho: default `gemini-flash-latest` (Google er current Flash model) |
+| `NEWS_FEED_URLS` | *(optional)* khali rakho: default ForexFactory weekly calendar feed |
 | `METAAPI_TOKEN` | *(optional, paid)* <https://app.metaapi.cloud> → API access token |
 
    `openssl` na thakle: <https://generate-secret.vercel.app/32> theke random value nite paro.

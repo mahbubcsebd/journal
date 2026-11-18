@@ -4,6 +4,10 @@ import { getCurrentUser, getDataMode, getSelectedAccountIds, getUserAccounts } f
 import { todayIn } from "@/lib/dates";
 import { AccountSwitcher } from "./account-switcher";
 import { ModeSwitcher } from "./mode-switcher";
+import { NewsCountdown } from "@/components/news/news-countdown";
+import { getUpcomingRelevant } from "@/server/queries/news";
+import { ensureFreshCalendar } from "@/server/services/news";
+import { after } from "next/server";
 import { CommandMenu } from "./command-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
@@ -18,10 +22,16 @@ export function Topbar() {
         <ModeSlot />
       </Suspense>
       <div className="flex-1" />
+      <Suspense fallback={null}>
+        <NewsSlot />
+      </Suspense>
       <Suspense fallback={<Skeleton className="hidden h-9 w-56 rounded-lg md:block" />}>
         <CommandSlot />
       </Suspense>
-      <ThemeToggle />
+      {/* Phones get the theme switch in the account menu to keep the bar on one line. */}
+      <div className="hidden sm:block">
+        <ThemeToggle />
+      </div>
       <Suspense fallback={<Skeleton className="size-9 rounded-full" />}>
         <UserSlot />
       </Suspense>
@@ -71,4 +81,19 @@ async function ModeSlot() {
   const user = await getCurrentUser();
   if (!user) return null;
   return <ModeSwitcher mode={await getDataMode()} />;
+}
+
+async function NewsSlot() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  // Keep the shared calendar fresh without slowing this page down.
+  after(() => ensureFreshCalendar().catch(() => undefined));
+  const { events, prefs } = await getUpcomingRelevant(user).catch(() => ({ events: [], prefs: null }));
+  if (!prefs) return null;
+  return (
+    <NewsCountdown
+      window={prefs.window}
+      events={events.map((e) => ({ id: e.id, title: e.title, currency: e.currency, impact: e.impact, time: e.time.toISOString() }))}
+    />
+  );
 }

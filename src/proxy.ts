@@ -30,6 +30,7 @@ export const config = {
     "/onboarding",
     "/dashboard/:path*",
     "/calendar/:path*",
+    "/news/:path*",
     "/trades/:path*",
     "/analytics/:path*",
     "/reports/:path*",

@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   deleteMyAccount,
   saveDisciplineSettings,
+  saveNewsSettings,
   saveNotificationSettings,
   saveProfile,
   sendWeeklyReportNow,
@@ -32,6 +33,7 @@ export function SettingsForm(props: {
   emailWeeklyReport: boolean;
   emailGoalAlerts: boolean;
   cooldownMinutes: number;
+  news: { impact: "High" | "Medium" | "Low"; currencies: string[]; before: number; after: number };
 }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(saveProfile, {});
   const zones = COMMON_TIMEZONES.includes(props.timezone) ? COMMON_TIMEZONES : [props.timezone, ...COMMON_TIMEZONES];
@@ -92,6 +94,7 @@ export function SettingsForm(props: {
         </CardContent>
       </Card>
       <Discipline cooldown={props.cooldownMinutes} />
+      <NewsSettings {...props.news} />
       <Notifications weekly={props.emailWeeklyReport} alerts={props.emailGoalAlerts} email={props.email} />
       <YourData email={props.email} />
       <Card>
@@ -326,6 +329,68 @@ function Discipline({ cooldown }: { cooldown: number }) {
             ]}
           />
         </Field>
+      </CardContent>
+    </Card>
+  );
+}
+
+const NEWS_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF", "CNY"];
+
+function NewsSettings(initial: { impact: "High" | "Medium" | "Low"; currencies: string[]; before: number; after: number }) {
+  const [v, setV] = useState(initial);
+  const [pending, start] = useTransition();
+  const save = (next: typeof v) => {
+    setV(next);
+    start(async () => {
+      await saveNewsSettings({ newsImpact: next.impact, newsCurrencies: next.currencies, newsBefore: next.before, newsAfter: next.after });
+      toast.success("News alerts saved");
+    });
+  };
+  const mode = v.currencies.includes("ALL") ? "all" : v.currencies.length ? "custom" : "auto";
+  const windowOptions = [0, 2, 5, 10, 15, 30, 60].map((m) => ({ value: String(m), label: m === 0 ? "Off" : `${m} min` }));
+  return (
+    <Card id="news" className="scroll-mt-24">
+      <CardHeader className="flex-col gap-1">
+        <CardTitle>Economic news</CardTitle>
+        <CardDescription>The header countdown, the news page and the no-trade window around releases.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Countdown shows" htmlFor="news-impact" hint="High impact is what usually moves price hard.">
+            <Combobox
+              id="news-impact"
+              value={v.impact}
+              disabled={pending}
+              onValueChange={(impact) => save({ ...v, impact: impact as typeof v.impact })}
+              options={[
+                { value: "High", label: "High impact only (recommended)" },
+                { value: "Medium", label: "High + medium impact" },
+                { value: "Low", label: "All news" },
+              ]}
+            />
+          </Field>
+          <Field label="Currencies" htmlFor="news-cur" hint={mode === "auto" ? "From the symbols you trade, plus USD." : undefined}>
+            <Combobox
+              id="news-cur"
+              value={mode === "custom" ? v.currencies[0] : mode}
+              disabled={pending}
+              onValueChange={(c) => save({ ...v, currencies: c === "auto" ? [] : c === "all" ? ["ALL"] : [...new Set(["USD", c])] })}
+              options={[
+                { value: "auto", label: "Auto — my traded symbols" },
+                { value: "all", label: "All currencies" },
+                ...NEWS_CURRENCIES.filter((c) => c !== "USD").map((c) => ({ value: c, label: `USD + ${c} only` })),
+              ]}
+            />
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="No-trade window before" htmlFor="news-before" hint="15 minutes is a common rule.">
+            <Combobox id="news-before" value={String(v.before)} disabled={pending} onValueChange={(m) => save({ ...v, before: Number(m) })} options={windowOptions} />
+          </Field>
+          <Field label="…and after the release" htmlFor="news-after">
+            <Combobox id="news-after" value={String(v.after)} disabled={pending} onValueChange={(m) => save({ ...v, after: Number(m) })} options={windowOptions} />
+          </Field>
+        </div>
       </CardContent>
     </Card>
   );

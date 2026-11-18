@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, Settings, Wallet } from "lucide-react";
+import { LogOut, Moon, Settings, Sun, Wallet } from "lucide-react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -14,6 +15,7 @@ import { signOut } from "@/lib/auth-client";
 import { initials } from "@/lib/utils";
 
 export function UserMenu({ name, email }: { name: string; email: string }) {
+  const { resolvedTheme, setTheme } = useTheme();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -33,6 +35,15 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings"><Settings /> Settings</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="sm:hidden"
+          onSelect={(e) => {
+            e.preventDefault();
+            setTheme(resolvedTheme === "dark" ? "light" : "dark");
+          }}
+        >
+          {resolvedTheme === "dark" ? <Sun /> : <Moon />} {resolvedTheme === "dark" ? "Light theme" : "Dark theme"}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

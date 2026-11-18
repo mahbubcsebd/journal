@@ -50,6 +50,13 @@
       "when": 1794847938599,
       "tag": "0006_trade_checklist",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795030947251,
+      "tag": "0007_economic_calendar",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,7 @@ import { getSelectedAccountIds, requireUser } from "@/lib/session";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
 import { getAnalyticsTrades, getSetupReps } from "@/server/queries/analytics";
 import { MindsetCoach } from "@/components/mindset/mindset-coach";
+import { getEvents, getNewsPrefs } from "@/server/queries/news";
 import { DEFAULT_COOLDOWN_MINUTES } from "@/lib/mindset";
 import { getJournalDays } from "@/server/queries/journal";
 
@@ -105,6 +106,9 @@ async function Psychology({ searchParams }: { searchParams: PageProps<"/psycholo
     getSetupReps(user.id, ids),
   ]);
   const allTrades = history?.trades ?? trades;
+  const prefs = await getNewsPrefs(user);
+  const span = allTrades.length ? [Math.min(...allTrades.map((t) => t.openAt)), Math.max(...allTrades.map((t) => t.openAt))] : null;
+  const newsEvents = span ? (await getEvents(new Date(span[0] - 3_600_000), new Date(span[1] + 3_600_000))).filter((e) => e.impact === "High") : [];
 
   const dayNet = new Map<string, number>();
   for (const t of trades) dayNet.set(t.day, (dayNet.get(t.day) ?? 0) + t.net);
@@ -137,6 +141,7 @@ async function Psychology({ searchParams }: { searchParams: PageProps<"/psycholo
         currency={currency}
         cooldownMinutes={user.settings.cooldownMinutes ?? DEFAULT_COOLDOWN_MINUTES}
         weekStartsOn={(user.settings.weekStartsOn ?? 1) as WeekStart}
+        news={{ events: newsEvents, window: prefs.window }}
       />
       <h2 className="-mb-2 text-lg font-semibold tracking-tight">This period</h2>
       {trades.length === 0 ? (

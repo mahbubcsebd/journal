@@ -9,6 +9,7 @@ import {
   Gauge,
   LayoutDashboard,
   ListOrdered,
+  Newspaper,
   NotebookPen,
   Settings,
   ShieldAlert,
@@ -28,6 +29,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/calendar", label: "Calendar", icon: CalendarDays },
+      { href: "/news", label: "News", icon: Newspaper },
       { href: "/trades", label: "Trades", icon: ListOrdered },
       { href: "/analytics", label: "Analytics", icon: ChartNoAxesCombined },
       { href: "/reports", label: "Reports", icon: FileText },

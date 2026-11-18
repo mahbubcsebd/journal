@@ -130,3 +130,19 @@ export async function toggleFavoriteChart(id: string) {
   revalidatePath("/analytics");
   return next.includes(key);
 }
+
+const newsSchema = z.object({
+  newsImpact: z.enum(["High", "Medium", "Low"]),
+  newsCurrencies: z.array(z.string().regex(/^[A-Z]{3}$|^ALL$/)).max(12),
+  newsBefore: z.number().int().min(0).max(120),
+  newsAfter: z.number().int().min(0).max(120),
+});
+
+/** Economic-news alerts: impact floor, currencies, no-trade window. */
+export async function saveNewsSettings(input: z.infer<typeof newsSchema>) {
+  const current = await getCurrentUser();
+  if (!current) redirect("/login");
+  const data = newsSchema.parse(input);
+  await db.update(user).set({ settings: { ...current.settings, ...data } }).where(eq(user.id, current.id));
+  revalidatePath("/", "layout");
+}
