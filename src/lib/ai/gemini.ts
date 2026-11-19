@@ -18,7 +18,21 @@ export class AiError extends Error {
 // "gemini-flash-latest" always points at Google's current Flash model, so the
 // app keeps working when a pinned version is retired. GEMINI_MODEL overrides it.
 const DEFAULT_MODEL = "gemini-flash-latest";
-const FALLBACK_MODELS = ["gemini-flash-latest", "gemini-2.5-flash"];
+// Busy, retired or slow models fall through to the next; the lite model is
+// the fast, high-capacity last resort.
+const FALLBACK_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"];
+/** Per-model wait: a few attempts must fit in a 60-second function. */
+const ATTEMPT_TIMEOUT_MS = 18_000;
+/** Statuses where another model may succeed: retired, quota/rate, overloaded. */
+const TRY_NEXT = new Set([404, 429, 500, 502, 503, 504]);
+
+/** Models that were busy or silent recently are skipped for a few minutes (per server instance). */
+const COOLDOWN_MS = 5 * 60_000;
+const coolingUntil = new Map<string, number>();
+const cooling = (model: string) => (coolingUntil.get(model) ?? 0) > Date.now();
+const coolDown = (model: string) => coolingUntil.set(model, Date.now() + COOLDOWN_MS);
+/** Tests only: forget which models were cooling down. */
+export const resetModelCooldowns = () => coolingUntil.clear();
 
 export const aiModel = () => process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
 export const aiConfigured = () => Boolean(process.env.GEMINI_API_KEY?.trim());
@@ -85,22 +99,32 @@ export async function generateJsonWithMeta<T>(opts: {
   const apis = endpoints();
   let res: Response | null = null;
   let used: AiMeta | null = null;
+  let timedOut = 0;
+  const started = Date.now();
   apis: for (const [ai, api] of apis.entries()) {
-    for (const model of models) {
+    for (const [mi, model] of models.entries()) {
+      const last = mi === models.length - 1;
+      if (cooling(model) && !last) continue;
+      // Stay inside the function's time limit.
+      if (Date.now() - started > 50_000) break apis;
       try {
         res = await fetch(api.url(model), {
           method: "POST",
           headers: { "content-type": "application/json", "x-goog-api-key": key },
           body,
-          signal: AbortSignal.timeout(55_000),
+          signal: AbortSignal.timeout(last ? 25_000 : ATTEMPT_TIMEOUT_MS),
         });
       } catch (e) {
-        console.error(`[ai] ${api.name} request failed`, e);
-        throw new AiError("Couldn't reach Gemini (no response in time). Please try again.", "UNAVAILABLE");
+        timedOut++;
+        coolDown(model);
+        console.warn(`[ai] ${api.name}: ${model} gave no answer in time`, e instanceof Error ? e.name : e);
+        res = null;
+        continue;
       }
       used = { endpoint: api.name, model };
-      if (res.status === 404) {
-        console.warn(`[ai] ${api.name}: model ${model} not found, trying the next one`);
+      if (TRY_NEXT.has(res.status) && res.status !== 404) coolDown(model);
+      if (TRY_NEXT.has(res.status) && !last) {
+        console.warn(`[ai] ${api.name}: ${model} → ${res.status} ${await googleMessage(res)}; trying the next model`);
         continue;
       }
       // Key refused by this API: it may belong to the other one.
@@ -111,7 +135,11 @@ export async function generateJsonWithMeta<T>(opts: {
       break apis;
     }
   }
-  if (!res || !used) throw new AiError("Couldn't reach Gemini. Please try again.", "UNAVAILABLE");
+  if (!res || !used)
+    throw new AiError(
+      timedOut ? "Gemini is very busy right now and didn't answer in time. Please try again in a minute." : "Couldn't reach Gemini. Please try again.",
+      "UNAVAILABLE",
+    );
 
   if (!res.ok) {
     const msg = await googleMessage(res);

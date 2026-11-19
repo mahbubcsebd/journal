@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ATrade } from "../analytics";
 import { buildReviewContext } from "./context";
-import { AiError, generateJson, generateJsonWithMeta } from "./gemini";
+import { AiError, generateJson, generateJsonWithMeta, resetModelCooldowns } from "./gemini";
 import { reviewResponseSchema, reviewSchema } from "./schemas";
 
 const t = (o: Partial<ATrade>): ATrade => ({
@@ -54,6 +54,23 @@ describe("buildReviewContext", () => {
 });
 
 describe("generateJson", () => {
+  it("moves on to the next model when one is overloaded", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "k");
+    const ok = { headline: "h", grade: "A", summary: "s", strengths: [], weaknesses: [], patterns: [], actions: [{ title: "t", detail: "d" }] };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: "This model is currently experiencing high demand." } }), { status: 503 }))
+      .mockRejectedValueOnce(Object.assign(new Error("timeout"), { name: "TimeoutError" }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(ok) }] } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const r = await generateJsonWithMeta({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema });
+    expect(fetch.mock.calls.map((c) => String(c[0]).match(/models\/([^:]+)/)![1])).toEqual(["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]);
+    expect(r.model).toBe("gemini-3.5-flash-lite");
+    // The busy and silent models are skipped on the next call.
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(ok) }] } }] }), { status: 200 }));
+    expect((await generateJsonWithMeta({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema })).model).toBe("gemini-3.5-flash-lite");
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
   it("falls back to Vertex AI when the Gemini API refuses the key", async () => {
     vi.stubEnv("GEMINI_API_KEY", "AQ.test");
     const ok = { headline: "h", grade: "A", summary: "s", strengths: [], weaknesses: [], patterns: [], actions: [{ title: "t", detail: "d" }] };
@@ -94,6 +111,7 @@ describe("generateJson", () => {
     vi.fn(async () => new Response(typeof body === "string" ? body : JSON.stringify(body), { status }));
 
   afterEach(() => {
+    resetModelCooldowns();
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
   });
