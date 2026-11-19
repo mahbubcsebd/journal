@@ -47,14 +47,39 @@ const callout = z.object({
   text: z.string().min(1).max(1500),
 });
 
+/** A one-click button that turns advice into a setting, goal or rule. */
+export const coachAction = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("goal"),
+    metric: z.enum(["NET_PNL", "WIN_RATE", "MAX_LOSS", "MAX_TRADES", "GREEN_DAYS"]),
+    period: z.enum(["DAY", "WEEK", "MONTH"]),
+    target: z.coerce.number().positive().max(1e9),
+    label: z.string().trim().min(1).max(100),
+  }),
+  z.object({ type: z.literal("checklist"), item: z.string().trim().min(2).max(140), label: z.string().trim().min(1).max(100) }),
+  z.object({ type: z.literal("cooldown"), minutes: z.coerce.number().int().min(0).max(240), label: z.string().trim().min(1).max(100) }),
+  z.object({
+    type: z.literal("news_window"),
+    before: z.coerce.number().int().min(0).max(240),
+    after: z.coerce.number().int().min(0).max(240),
+    label: z.string().trim().min(1).max(100),
+  }),
+  z.object({ type: z.literal("memory"), text: z.string().trim().min(2).max(300), label: z.string().trim().min(1).max(100) }),
+]);
+export type CoachAction = z.infer<typeof coachAction>;
+const action = z.object({ items: z.array(z.unknown()).min(1).max(4) }).transform((v) => ({
+  items: v.items.map((i) => coachAction.safeParse(i)).flatMap((r) => (r.success ? [r.data] : [])),
+}));
+
 export type ChartBlock = z.infer<typeof chart> & { kind: "chart" };
 export type TableBlock = z.infer<typeof table> & { kind: "table" };
 export type CardsBlock = z.infer<typeof cards> & { kind: "cards" };
 export type CalloutBlock = z.infer<typeof callout> & { kind: "callout" };
-export type CoachBlock = ChartBlock | TableBlock | CardsBlock | CalloutBlock;
+export type ActionBlock = { items: CoachAction[]; kind: "action" };
+export type CoachBlock = ChartBlock | TableBlock | CardsBlock | CalloutBlock | ActionBlock;
 
-export const BLOCK_KINDS = ["chart", "table", "cards", "callout"] as const;
-const SCHEMAS = { chart, table, cards, callout } as const;
+export const BLOCK_KINDS = ["chart", "table", "cards", "callout", "action"] as const;
+const SCHEMAS = { chart, table, cards, callout, action } as const;
 
 /** Lenient JSON: models sometimes add trailing commas or wrap in prose. */
 function looseJson(raw: string): unknown {
@@ -86,6 +111,7 @@ export function parseBlock(lang: string, raw: string): CoachBlock | null {
     // A pie of negatives makes no sense; fall back to bars.
     if (block.data.some((d) => d.value < 0)) block.type = "bar";
   }
+  if (block.kind === "action" && block.items.length === 0) return null;
   if (block.kind === "table") {
     const n = block.columns.length;
     block.rows = block.rows.map((r) => (r.length >= n ? r.slice(0, n) : [...r, ...Array(n - r.length).fill("")]));

@@ -49,3 +49,21 @@ it("closes an unterminated fence", () => {
   expect(closeOpenFence("a\n```chart\n{")).toBe("a\n```chart\n{\n```");
   expect(closeOpenFence("a\n```x\n```")).toBe("a\n```x\n```");
 });
+
+describe("action blocks", () => {
+  it("keeps valid actions and drops broken ones", () => {
+    const b = parseBlock(
+      "action",
+      JSON.stringify({
+        items: [
+          { type: "goal", metric: "MAX_TRADES", period: "DAY", target: 3, label: "Max 3 trades a day" },
+          { type: "cooldown", minutes: "45", label: "45 min cooldown" },
+          { type: "goal", metric: "NOPE", period: "DAY", target: 3, label: "x" },
+          { type: "launch_rocket" },
+        ],
+      }),
+    );
+    expect(b?.kind === "action" && b.items.map((i) => i.type)).toEqual(["goal", "cooldown"]);
+  });
+  it("a block with no valid actions is dropped", () => expect(parseBlock("action", '{"items":[{"type":"x"}]}')).toBeNull());
+});

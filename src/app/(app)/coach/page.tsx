@@ -1,12 +1,19 @@
+import { and, eq, isNull } from "drizzle-orm";
 import type { Metadata } from "next";
+import { after } from "next/server";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { db } from "@/db";
+import { coachReport } from "@/db/schema";
 import { aiConfigured } from "@/lib/ai/gemini";
 import { getSelectedAccountIds, getUserAccounts, requireUser } from "@/lib/session";
 import { getConversation, listConversations, type CoachMessageView } from "@/server/queries/coach";
+import { getNewsPrefs } from "@/server/queries/news";
 import { CoachChat } from "./coach-chat";
 
 export const metadata: Metadata = { title: "AI Coach" };
+// Reviews and pre-trade checks run long AI calls from this page.
+export const maxDuration = 120;
 
 export default function CoachPage({ searchParams }: PageProps<"/coach">) {
   return (
@@ -28,8 +35,18 @@ async function Coach({ searchParams }: { searchParams: PageProps<"/coach">["sear
   const ready = listed != null;
   const conversations = listed ?? [];
   const current = cid && ready ? await getConversation(user.id, cid).catch(() => null) : null;
-  const [{ ids }, accounts] = await Promise.all([getSelectedAccountIds(user.id), getUserAccounts(user.id)]);
+  const [{ ids }, accounts, prefs] = await Promise.all([getSelectedAccountIds(user.id), getUserAccounts(user.id), getNewsPrefs(user)]);
   const currency = accounts.find((a) => ids.includes(a.id))?.currency;
+  if (current) {
+    // Opening a review marks it read.
+    after(() =>
+      db
+        .update(coachReport)
+        .set({ readAt: new Date() })
+        .where(and(eq(coachReport.conversationId, current.id), isNull(coachReport.readAt)))
+        .catch(() => {}),
+    );
+  }
   return (
     <CoachChat
       key={current?.id ?? "new"}
@@ -40,9 +57,24 @@ async function Coach({ searchParams }: { searchParams: PageProps<"/coach">["sear
       conversations={conversations.map((c) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt.toISOString() }))}
       conversationId={current?.id ?? null}
       initialMessages={(current?.messages ?? []).map(
-        (m): CoachMessageView => ({ id: m.id, role: m.role === "assistant" ? "assistant" : "user", content: m.content, toolsUsed: m.toolsUsed }),
+        (m): CoachMessageView => ({
+          id: m.id,
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content,
+          toolsUsed: m.toolsUsed,
+          feedback: m.feedback,
+          images: m.images,
+        }),
       )}
       ask={one(sp.ask)?.slice(0, 2000)}
+      replyLang={user.settings.coachLanguage ?? "auto"}
+      accounts={accounts
+        .filter((a) => ids.includes(a.id))
+        .concat(accounts.filter((a) => !ids.includes(a.id)))
+        .map((a) => ({ id: a.id, name: a.nickname, currency: a.currency, balance: a.balance }))}
+      symbols={prefs.symbols.slice(0, 30)}
+      dailyReport={user.settings.coachDailyReport !== false}
+      weeklyReport={user.settings.coachWeeklyReport !== false}
     />
   );
 }

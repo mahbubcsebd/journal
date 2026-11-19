@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ATrade } from "../analytics";
 import { buildReviewContext } from "./context";
-import { AiError, generateJson, generateJsonWithMeta, resetModelCooldowns } from "./gemini";
+import { AiError, chatWithTools, generateJson, generateJsonWithMeta, resetModelCooldowns } from "./gemini";
 import { reviewResponseSchema, reviewSchema } from "./schemas";
 
 const t = (o: Partial<ATrade>): ATrade => ({
@@ -139,5 +139,43 @@ describe("generateJson", () => {
     await expect(generateJson({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema })).rejects.toThrow(/API key expired/);
     vi.stubGlobal("fetch", reply(200, { candidates: [{ content: { parts: [{ text: '{"headline":"x"}' }] } }] }));
     await expect(generateJson({ system: "s", prompt: "p", responseSchema: {}, validate: reviewSchema })).rejects.toBeInstanceOf(AiError);
+  });
+});
+
+describe("chatWithTools streaming", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    resetModelCooldowns();
+  });
+  const sse = (...chunks: unknown[]) =>
+    new Response(chunks.map((c) => `data: ${JSON.stringify(c)}\r\n\r\n`).join(""), { status: 200, headers: { "content-type": "text/event-stream" } });
+
+  it("runs tools, then streams the answer text in pieces", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "k");
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        sse({ candidates: [{ content: { parts: [{ functionCall: { name: "get_x", args: { a: 1 } }, thoughtSignature: "s" }] } }] }),
+      )
+      .mockResolvedValueOnce(
+        sse(
+          { candidates: [{ content: { parts: [{ text: "Hello " }] } }] },
+          { candidates: [{ content: { parts: [{ text: "world" }] } }] },
+        ),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const events: unknown[] = [];
+    const runTool = vi.fn(async () => ({ value: 42 }));
+    const r = await chatWithTools({ system: "s", history: [{ role: "user", parts: [{ text: "hi" }] }], tools: [], runTool, onEvent: (e) => events.push(e) });
+    expect(r.text).toBe("Hello world");
+    expect(r.toolsUsed).toEqual(["get_x"]);
+    expect(runTool).toHaveBeenCalledWith("get_x", { a: 1 });
+    expect(events).toEqual([{ type: "tool", name: "get_x" }, { type: "text", text: "Hello " }, { type: "text", text: "world" }]);
+    expect(String(fetch.mock.calls[0][0])).toContain(":streamGenerateContent?alt=sse");
+    // Second call carries the model's turn (signature kept) and the tool result.
+    const body = JSON.parse(fetch.mock.calls[1][1].body as string);
+    expect(body.contents[1]).toEqual({ role: "model", parts: [{ functionCall: { name: "get_x", args: { a: 1 } }, thoughtSignature: "s" }] });
+    expect(body.contents[2].parts[0].functionResponse).toEqual({ name: "get_x", response: { result: { value: 42 } } });
   });
 });

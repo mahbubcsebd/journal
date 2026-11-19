@@ -74,6 +74,11 @@ export type UserSettings = {
   /** No-trade window around high-impact news, in minutes (defaults 15 / 15). */
   newsBefore?: number;
   newsAfter?: number;
+  /** AI coach reply language: follow the user's message, or always English / Bangla. */
+  coachLanguage?: "auto" | "en" | "bn";
+  /** Automatic AI coach reviews (default on). */
+  coachDailyReport?: boolean;
+  coachWeeklyReport?: boolean;
 };
 
 export type JournalPremarket = {
@@ -579,9 +584,49 @@ export const coachMessage = pgTable(
     /** Data the assistant looked up for this answer (tool names). */
     toolsUsed: jsonb("tools_used").$type<string[]>(),
     model: text("model"),
+    /** Thumbs up (1) / down (-1) from the trader. */
+    feedback: integer("feedback"),
+    /** Pictures sent with this message (not stored, only counted). */
+    images: integer("images").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("coach_message_conversation_idx").on(t.conversationId, t.createdAt)],
+);
+
+/** Things the coach remembers about the trader across chats (rules, goals, habits). */
+export const coachMemory = pgTable(
+  "coach_memory",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("coach_memory_user_idx").on(t.userId, t.createdAt)],
+);
+
+/** Automatic daily / weekly AI review, one per period. */
+export const coachReport = pgTable(
+  "coach_report",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<"daily" | "weekly">().notNull(),
+    /** First day of the period (YYYY-MM-DD, user timezone). */
+    period: text("period").notNull(),
+    language: text("language").$type<"en" | "bn">().notNull().default("en"),
+    content: text("content").notNull(),
+    model: text("model"),
+    /** The chat that holds this review, so the trader can ask follow-ups. */
+    conversationId: text("conversation_id").references(() => coachConversation.id, { onDelete: "set null" }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("coach_report_period_uq").on(t.userId, t.kind, t.period)],
 );
 
 /** Economic calendar (shared by every user), refreshed from the weekly feed. */

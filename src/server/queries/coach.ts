@@ -20,11 +20,28 @@ export async function getConversation(userId: string, id: string) {
     .limit(1);
   if (!c) return null;
   const messages = await db
-    .select({ id: coachMessage.id, role: coachMessage.role, content: coachMessage.content, toolsUsed: coachMessage.toolsUsed, createdAt: coachMessage.createdAt })
+    .select({
+      id: coachMessage.id,
+      role: coachMessage.role,
+      content: coachMessage.content,
+      toolsUsed: coachMessage.toolsUsed,
+      feedback: coachMessage.feedback,
+      images: coachMessage.images,
+      createdAt: coachMessage.createdAt,
+    })
     .from(coachMessage)
     .where(eq(coachMessage.conversationId, id))
     .orderBy(asc(coachMessage.createdAt));
   return { ...c, messages };
 }
 
-export type CoachMessageView = { id: string; role: "user" | "assistant"; content: string; toolsUsed: string[] | null };
+export type CoachMessageView = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  toolsUsed: string[] | null;
+  feedback?: number | null;
+  images?: number;
+  /** Pictures attached in this session (data URLs), shown until reload. */
+  previews?: string[];
+};

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { DailyPnlChart } from "@/components/charts/daily-pnl-chart";
 import { EquityChart } from "@/components/charts/equity-chart";
 import { pnlText } from "@/components/calendar/pnl-style";
+import { CoachStrip } from "@/components/coach/coach-strip";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { MiniMonth } from "@/components/dashboard/mini-month";
 import { OpenPositions } from "@/components/dashboard/open-positions";
@@ -140,6 +141,8 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
           />
         </StaggerItem>
       </Stagger>
+
+      <CoachStrip user={user} />
 
       <OpenPositions accounts={accounts.filter((a) => ids.includes(a.id))} timezone={user.timezone} benchmark={benchmark} />
 

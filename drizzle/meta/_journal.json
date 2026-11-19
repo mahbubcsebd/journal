@@ -64,6 +64,13 @@
       "when": 1795064661523,
       "tag": "0008_ai_coach",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795071439981,
+      "tag": "0009_coach_plus",
+      "breakpoints": true
     }
   ]
 }

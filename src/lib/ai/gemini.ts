@@ -47,7 +47,7 @@ async function googleMessage(res: Response) {
   return body.slice(0, 300);
 }
 
-type Endpoint = { name: "gemini-api" | "vertex-ai"; url: (model: string) => string };
+type Endpoint = { name: "gemini-api" | "vertex-ai"; url: (model: string, stream?: boolean) => string };
 
 /**
  * Google serves Gemini from two APIs. AI Studio keys ("AIza…") work on the
@@ -56,10 +56,17 @@ type Endpoint = { name: "gemini-api" | "vertex-ai"; url: (model: string) => stri
  */
 function endpoints(): Endpoint[] {
   const custom = process.env.GEMINI_BASE_URL?.replace(/\/$/, "");
-  if (custom) return [{ name: "gemini-api", url: (m) => `${custom}/v1beta/models/${encodeURIComponent(m)}:generateContent` }];
+  const method = (stream?: boolean) => (stream ? "streamGenerateContent?alt=sse" : "generateContent");
+  if (custom) return [{ name: "gemini-api", url: (m, st) => `${custom}/v1beta/models/${encodeURIComponent(m)}:${method(st)}` }];
   return [
-    { name: "gemini-api", url: (m) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent` },
-    { name: "vertex-ai", url: (m) => `https://aiplatform.googleapis.com/v1/publishers/google/models/${encodeURIComponent(m)}:generateContent` },
+    {
+      name: "gemini-api",
+      url: (m, st) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:${method(st)}`,
+    },
+    {
+      name: "vertex-ai",
+      url: (m, st) => `https://aiplatform.googleapis.com/v1/publishers/google/models/${encodeURIComponent(m)}:${method(st)}`,
+    },
   ];
 }
 
@@ -81,6 +88,7 @@ export type GeminiPart = {
   thoughtSignature?: string;
   functionCall?: { name: string; args?: Record<string, unknown> };
   functionResponse?: { name: string; response: Record<string, unknown> };
+  inlineData?: { mimeType: string; data: string };
 };
 export type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
 type GeminiReply = {
@@ -93,6 +101,76 @@ type GeminiReply = {
  * then fallbacks on busy/retired/slow models, Gemini API then Vertex AI.
  */
 export async function callGemini(body: Record<string, unknown>, budgetMs = 50_000): Promise<{ reply: GeminiReply } & AiMeta> {
+  const { res, ...used } = await openGemini(body, budgetMs, false);
+  const reply = (await res.json()) as GeminiReply;
+  if (reply.promptFeedback?.blockReason) throw new AiError("Gemini declined to answer this request.", "BAD_RESPONSE");
+  return { reply, ...used };
+}
+
+/** Wait this long for a streamed answer to start; the stream itself may take longer. */
+const STREAM_START_MS = 18_000;
+
+/**
+ * Streamed call: same fallbacks, then the answer's parts arrive as server-sent
+ * events. Text is passed to `onText` as it comes; all parts are returned.
+ */
+export async function streamGemini(
+  body: Record<string, unknown>,
+  onText: (t: string) => void,
+  budgetMs = 50_000,
+): Promise<{ parts: GeminiPart[] } & AiMeta> {
+  const started = Date.now();
+  const { res, ...used } = await openGemini(body, budgetMs, true);
+  const parts: GeminiPart[] = [];
+  const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = "";
+  const left = () => budgetMs - (Date.now() - started);
+  const handle = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const json = line.slice(5).trim();
+    if (!json || json === "[DONE]") return;
+    let chunk: GeminiReply;
+    try {
+      chunk = JSON.parse(json) as GeminiReply;
+    } catch {
+      return;
+    }
+    if (chunk.promptFeedback?.blockReason) throw new AiError("Gemini declined to answer this request.", "BAD_RESPONSE");
+    for (const p of chunk.candidates?.[0]?.content?.parts ?? []) {
+      parts.push(p);
+      if (p.text && !p.thought && !p.functionCall) onText(p.text);
+    }
+  };
+  for (;;) {
+    const timer = new Promise<never>((_, rej) =>
+      setTimeout(() => rej(new AiError("Gemini stopped answering midway. Please try again.", "UNAVAILABLE")), Math.max(1_000, Math.min(STREAM_START_MS, left()))),
+    );
+    const { value, done } = await Promise.race([reader.read(), timer]);
+    if (done) break;
+    buf += value;
+    let i: number;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      handle(buf.slice(0, i).replace(/\r$/, ""));
+      buf = buf.slice(i + 1);
+    }
+  }
+  if (buf.trim()) handle(buf.trim());
+  return { parts: mergeText(parts), ...used };
+}
+
+/** Streams split text into many parts; join neighbours (keeping signatures and calls). */
+function mergeText(parts: GeminiPart[]) {
+  const out: GeminiPart[] = [];
+  for (const p of parts) {
+    const prev = out[out.length - 1];
+    const plain = (x: GeminiPart) => x.text != null && !x.functionCall && !x.thought;
+    if (prev && plain(prev) && plain(p) && !p.thoughtSignature) prev.text += p.text!;
+    else out.push({ ...p });
+  }
+  return out;
+}
+
+async function openGemini(body: Record<string, unknown>, budgetMs: number, stream: boolean): Promise<{ res: Response } & AiMeta> {
   const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) throw new AiError("AI isn't set up yet. Add GEMINI_API_KEY to the server environment.", "NOT_CONFIGURED");
   const payload = JSON.stringify(body);
@@ -109,12 +187,24 @@ export async function callGemini(body: Record<string, unknown>, budgetMs = 50_00
       // Stay inside the function's time limit.
       if (Date.now() - started > budgetMs) break apis;
       try {
-        res = await fetch(api.url(model), {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-goog-api-key": key },
-          body: payload,
-          signal: AbortSignal.timeout(last ? 25_000 : ATTEMPT_TIMEOUT_MS),
-        });
+        // Time out waiting for the answer to start, never in the middle of reading it.
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), last ? 25_000 : stream ? STREAM_START_MS : ATTEMPT_TIMEOUT_MS);
+        try {
+          res = await fetch(api.url(model, stream), {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-goog-api-key": key },
+            body: payload,
+            signal: ctl.signal,
+          });
+        } finally {
+          if (stream) clearTimeout(t);
+        }
+        if (!stream) {
+          // A slow body still counts against this model's time.
+          const text = await res.text().finally(() => clearTimeout(t));
+          res = new Response(text, { status: res.status, headers: res.headers });
+        }
       } catch (e) {
         timedOut++;
         coolDown(model);
@@ -152,9 +242,7 @@ export async function callGemini(body: Record<string, unknown>, budgetMs = 50_00
     if (res.status === 400) throw new AiError(`Gemini rejected the request: ${msg}`, "BAD_RESPONSE");
     throw new AiError(`Gemini is unavailable right now (${res.status}): ${msg}`, "UNAVAILABLE");
   }
-  const reply = (await res.json()) as GeminiReply;
-  if (reply.promptFeedback?.blockReason) throw new AiError("Gemini declined to answer this request.", "BAD_RESPONSE");
-  return { reply, ...used };
+  return { res, ...used };
 }
 
 export async function generateJsonWithMeta<T>(opts: {
@@ -206,28 +294,46 @@ export async function chatWithTools(opts: {
   runTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
   maxSteps?: number;
   budgetMs?: number;
+  /** Stream: text as it is written, and each tool as it is called. */
+  onEvent?: (e: { type: "text"; text: string } | { type: "tool"; name: string }) => void;
 }): Promise<{ text: string; toolsUsed: string[] } & AiMeta> {
   const contents = [...opts.history];
   const toolsUsed: string[] = [];
   const started = Date.now();
   const budget = opts.budgetMs ?? 100_000;
   let meta: AiMeta | null = null;
+  // While streaming, the reader sees text from every step, so that is what is saved.
+  let streamed = "";
   for (let step = 0; step < (opts.maxSteps ?? 6); step++) {
     const left = budget - (Date.now() - started);
     if (left < 8_000) break;
     const last = step === (opts.maxSteps ?? 6) - 1 || left < 25_000;
-    const { reply, ...used } = await callGemini(
-      {
-        systemInstruction: { parts: [{ text: opts.system }] },
-        contents,
-        // On the last step, no more tools: the model must answer.
-        ...(last ? {} : { tools: [{ functionDeclarations: opts.tools }] }),
-        generationConfig: { temperature: 0.5, maxOutputTokens: 8192 },
-      },
-      Math.min(50_000, left - 5_000),
-    );
-    meta = used;
-    const parts = reply.candidates?.[0]?.content?.parts ?? [];
+    const body = {
+      systemInstruction: { parts: [{ text: opts.system }] },
+      contents,
+      // On the last step, no more tools: the model must answer.
+      ...(last ? {} : { tools: [{ functionDeclarations: opts.tools }] }),
+      generationConfig: { temperature: 0.5, maxOutputTokens: 8192 },
+    };
+    const onEvent = opts.onEvent;
+    let parts: GeminiPart[];
+    if (onEvent) {
+      const r = await streamGemini(
+        body,
+        (t) => {
+          streamed += t;
+          onEvent({ type: "text", text: t });
+        },
+        left - 5_000,
+      );
+      parts = r.parts;
+      meta = { endpoint: r.endpoint, model: r.model };
+    } else {
+      const { reply, ...used } = await callGemini(body, Math.min(50_000, left - 5_000));
+      meta = used;
+      parts = reply.candidates?.[0]?.content?.parts ?? [];
+    }
+    const used = meta;
     const calls = parts.filter((p) => p.functionCall);
     if (calls.length === 0) {
       const text = parts
@@ -236,7 +342,11 @@ export async function chatWithTools(opts: {
         .join("")
         .trim();
       if (!text) throw new AiError("Gemini returned an empty answer. Try again.", "BAD_RESPONSE");
-      return { text, toolsUsed, ...used };
+      return { text: onEvent ? streamed.trim() : text, toolsUsed, ...used };
+    }
+    if (onEvent && streamed && !streamed.endsWith("\n\n")) {
+      streamed += "\n\n";
+      onEvent({ type: "text", text: "\n\n" });
     }
     // Keep the model's turn as-is (thought signatures included), then answer each call.
     contents.push({ role: "model", parts });
@@ -244,6 +354,7 @@ export async function chatWithTools(opts: {
     for (const c of calls) {
       const name = c.functionCall!.name;
       toolsUsed.push(name);
+      opts.onEvent?.({ type: "tool", name });
       let result: unknown;
       try {
         result = await opts.runTool(name, c.functionCall!.args ?? {});

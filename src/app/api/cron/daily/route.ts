@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { runDailyNotifications } from "@/server/services/notifications";
 import { refreshCalendar } from "@/server/services/news";
+import { runCoachReports } from "@/server/services/coach-reports";
 
 export const maxDuration = 300;
 
@@ -13,5 +14,7 @@ export async function GET(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   const [calendar, result] = await Promise.all([refreshCalendar().catch((e) => ({ ok: false, error: String(e) })), runDailyNotifications()]);
-  return Response.json({ ...result, calendar });
+  // AI reviews last: they use the fresh calendar and synced trades.
+  const coach = await runCoachReports(180_000).catch((e) => ({ error: String(e) }));
+  return Response.json({ ...result, calendar, coach });
 }

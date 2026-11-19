@@ -1,5 +1,7 @@
 import "server-only";
-import type { User } from "@/db/schema";
+import { and, asc, count, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { coachMemory, type User } from "@/db/schema";
 import type { ToolDeclaration } from "@/lib/ai/gemini";
 import { groupBy, tiltPatterns, type ATrade, type GroupRow } from "@/lib/analytics";
 import { addDays, todayIn } from "@/lib/dates";
@@ -83,6 +85,17 @@ export const COACH_TOOLS: ToolDeclaration[] = [
     name: "get_accounts",
     description: "The user's Exness MT5 accounts: name, type, real/demo, currency, balance, equity, open positions with floating P&L, last sync.",
     parameters: { type: "OBJECT", properties: {} },
+  },
+  {
+    name: "remember",
+    description:
+      "Save a lasting fact about the trader for future chats: a rule they commit to, a goal, a recurring mistake, a preference (e.g. 'Rule: no trades 15 min around USD news', 'Goal: pass a 10k prop challenge'). Only when the user states it or agrees to it; keep it one short sentence.",
+    parameters: { type: "OBJECT", properties: { text: { type: "STRING" } }, required: ["text"] },
+  },
+  {
+    name: "forget",
+    description: "Delete a saved memory by id when it is wrong, outdated or the user asks.",
+    parameters: { type: "OBJECT", properties: { id: { type: "STRING" } }, required: ["id"] },
   },
   {
     name: "get_journal",
@@ -343,6 +356,25 @@ export async function runCoachTool(user: User, name: string, args: Record<string
       };
     }
 
+    case "remember": {
+      const text = str(args.text)?.slice(0, 300);
+      if (!text) return { error: "text is required" };
+      const [{ n }] = await db.select({ n: count() }).from(coachMemory).where(eq(coachMemory.userId, user.id));
+      if (n >= MAX_MEMORIES) return { error: `Memory is full (${MAX_MEMORIES}). Ask the user which memory to forget.` };
+      const [row] = await db.insert(coachMemory).values({ userId: user.id, text }).returning({ id: coachMemory.id });
+      return { saved: true, id: row.id };
+    }
+
+    case "forget": {
+      const id = str(args.id);
+      if (!id) return { error: "id is required" };
+      const del = await db
+        .delete(coachMemory)
+        .where(and(eq(coachMemory.id, id), eq(coachMemory.userId, user.id)))
+        .returning({ id: coachMemory.id });
+      return { deleted: del.length > 0 };
+    }
+
     case "get_journal": {
       const rows = await listJournalEntries(user.id, num(args.limit, 1, 30, 10));
       return {
@@ -369,7 +401,20 @@ export const TOOL_LABEL: Record<string, string> = {
   get_news: "News calendar",
   get_accounts: "Accounts",
   get_journal: "Journal",
+  remember: "Memory",
+  forget: "Memory",
 };
+
+export const MAX_MEMORIES = 50;
+
+export async function listMemories(userId: string) {
+  return db
+    .select({ id: coachMemory.id, text: coachMemory.text, createdAt: coachMemory.createdAt })
+    .from(coachMemory)
+    .where(eq(coachMemory.userId, userId))
+    .orderBy(asc(coachMemory.createdAt))
+    .limit(MAX_MEMORIES);
+}
 
 /** Short context for every chat: who, when, which accounts. */
 export async function coachContext(user: User) {

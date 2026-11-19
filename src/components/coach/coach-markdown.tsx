@@ -4,12 +4,13 @@ import Link from "next/link";
 import { memo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { closeOpenFence, parseBlock } from "@/lib/coach-blocks";
+import { BLOCK_KINDS, closeOpenFence, parseBlock } from "@/lib/coach-blocks";
 import { cn } from "@/lib/utils";
 import { CoachBlockView } from "./blocks";
+import type { CoachLang } from "./i18n";
 
 /** Markdown answer with the coach's rich blocks (chart, table, cards, callout). */
-export const CoachMarkdown = memo(function CoachMarkdown({ text, currency }: { text: string; currency: string }) {
+export const CoachMarkdown = memo(function CoachMarkdown({ text, currency, lang = "en" }: { text: string; currency: string; lang?: CoachLang }) {
   const components: Components = {
     // Fenced blocks arrive as <pre><code class="language-x">; ours render as widgets.
     pre({ children, node, ...rest }) {
@@ -19,9 +20,9 @@ export const CoachMarkdown = memo(function CoachMarkdown({ text, currency }: { t
         const raw = code.children.map((c) => ("value" in c ? c.value : "")).join("");
         if (cls) {
           const block = parseBlock(cls.slice(9), raw);
-          if (block) return <CoachBlockView block={block} currency={currency} />;
+          if (block) return <CoachBlockView block={block} currency={currency} lang={lang} />;
           // A block that is still unfinished or broken: don't show raw JSON.
-          if (["chart", "table", "cards", "callout"].includes(cls.slice(9))) return null;
+          if ((BLOCK_KINDS as readonly string[]).includes(cls.slice(9))) return null;
         }
       }
       return (

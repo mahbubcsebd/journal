@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Info, Lightbulb, OctagonAlert } from "lucide-react";
+import { AlertTriangle, BellOff, Brain, Check, CheckCircle2, Info, Lightbulb, ListChecks, Loader2, OctagonAlert, Target, Timer } from "lucide-react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Bar,
@@ -18,14 +19,19 @@ import {
   YAxis,
 } from "recharts";
 import { ChartTooltip } from "@/components/charts/chart-tooltip";
-import { cellSign, type CalloutBlock, type CardsBlock, type ChartBlock, type CoachBlock, type TableBlock } from "@/lib/coach-blocks";
+import { Button } from "@/components/ui/button";
+import { cellSign, type ActionBlock, type CalloutBlock, type CardsBlock, type ChartBlock, type CoachAction, type CoachBlock, type TableBlock } from "@/lib/coach-blocks";
+import { runCoachAction } from "@/server/actions/coach";
+import { COACH_TEXT, type CoachLang } from "./i18n";
 import { cn, formatMoney } from "@/lib/utils";
 
 const tick = { fontSize: 11, fill: "var(--muted-foreground)" };
 const PALETTE = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)"];
 
-export function CoachBlockView({ block, currency }: { block: CoachBlock; currency: string }) {
+export function CoachBlockView({ block, currency, lang = "en" }: { block: CoachBlock; currency: string; lang?: CoachLang }) {
   switch (block.kind) {
+    case "action":
+      return <ActionView block={block} lang={lang} />;
     case "chart":
       return <ChartView block={block} currency={currency} />;
     case "table":
@@ -239,6 +245,48 @@ function CalloutView({ block }: { block: CalloutBlock }) {
           <CellText text={block.text} />
         </p>
       </div>
+    </div>
+  );
+}
+
+const ACTION_ICON = { goal: Target, checklist: ListChecks, cooldown: Timer, news_window: BellOff, memory: Brain } as const;
+
+/** Buttons that apply the coach's advice; nothing changes until the trader clicks. */
+function ActionView({ block, lang }: { block: ActionBlock; lang: CoachLang }) {
+  return (
+    <div className="my-3 flex flex-wrap gap-2">
+      {block.items.map((a, i) => (
+        <ActionButton key={i} action={a} lang={lang} />
+      ))}
+    </div>
+  );
+}
+
+function ActionButton({ action, lang }: { action: CoachAction; lang: CoachLang }) {
+  const t = COACH_TEXT[lang];
+  const [state, setState] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  const Icon = ACTION_ICON[action.type];
+  return (
+    <div className="grid gap-1">
+      <Button
+        type="button"
+        variant={state?.ok ? "secondary" : "outline"}
+        size="sm"
+        disabled={pending || state?.ok}
+        className={cn("h-auto min-h-9 justify-start py-1.5 text-left whitespace-normal", !state && "border-brand/50 hover:bg-brand-soft/50")}
+        onClick={() =>
+          start(async () => {
+            const r = await runCoachAction(action);
+            setState(r.ok ? { ok: true, text: r.message } : { ok: false, text: r.error });
+          })
+        }
+      >
+        {pending ? <Loader2 className="animate-spin" /> : state?.ok ? <Check className="text-profit" /> : <Icon className="text-brand-ink" />}
+        <span>{action.label}</span>
+        {state?.ok && <span className="text-xs text-muted-foreground">· {t.actionDone}</span>}
+      </Button>
+      {state && <p className={cn("text-xs", state.ok ? "text-muted-foreground" : "text-loss")}>{state.text}</p>}
     </div>
   );
 }
