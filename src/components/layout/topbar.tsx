@@ -5,6 +5,7 @@ import { todayIn } from "@/lib/dates";
 import { AccountSwitcher } from "./account-switcher";
 import { ModeSwitcher } from "./mode-switcher";
 import { NewsCountdown } from "@/components/news/news-countdown";
+import { SessionBar, SessionPill } from "@/components/sessions/session-clock";
 import { getUpcomingRelevant } from "@/server/queries/news";
 import { ensureFreshCalendar } from "@/server/services/news";
 import { after } from "next/server";
@@ -23,9 +24,12 @@ export function Topbar() {
       </Suspense>
       <div className="flex-1" />
       <Suspense fallback={null}>
+        <SessionSlot />
+      </Suspense>
+      <Suspense fallback={null}>
         <NewsSlot />
       </Suspense>
-      <Suspense fallback={<Skeleton className="hidden h-9 w-56 rounded-lg md:block" />}>
+      <Suspense fallback={<Skeleton className="hidden h-9 w-56 rounded-lg xl:block" />}>
         <CommandSlot />
       </Suspense>
       {/* Phones get the theme switch in the account menu to keep the bar on one line. */}
@@ -81,6 +85,27 @@ async function ModeSlot() {
   const user = await getCurrentUser();
   if (!user) return null;
   return <ModeSwitcher mode={await getDataMode()} />;
+}
+
+async function SessionSlot() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return <SessionPill timezone={user.timezone} />;
+}
+
+/** Phones: the session clock as a slim bar under the header. */
+export function SessionBarSlot() {
+  return (
+    <Suspense fallback={<div className="h-8 lg:hidden" />}>
+      <SessionBarInner />
+    </Suspense>
+  );
+}
+
+async function SessionBarInner() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return <SessionBar timezone={user.timezone} />;
 }
 
 async function NewsSlot() {

@@ -37,6 +37,7 @@ export const config = {
     "/calendar/:path*",
     "/coach/:path*",
     "/news/:path*",
+    "/sessions/:path*",
     "/trades/:path*",
     "/analytics/:path*",
     "/reports/:path*",

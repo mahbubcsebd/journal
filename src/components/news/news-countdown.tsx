@@ -52,7 +52,7 @@ export function NewsCountdown({ events, window }: { events: CountdownEvent[]; wi
       title={`${event.currency} ${event.title} — ${label}`}
       aria-label={`${event.currency} ${event.title}, ${phase === "after" ? "released" : "in"} ${time}. ${label}.`}
       className={cn(
-        "inline-flex h-9 max-w-[min(52vw,380px)] shrink-0 items-center gap-1.5 rounded-lg border px-2 text-[13px] font-medium shadow-xs transition sm:gap-2 sm:px-2.5",
+        "inline-flex h-9 max-w-[min(52vw,380px)] min-w-0 items-center gap-1.5 rounded-lg border px-2 text-[13px] font-medium shadow-xs transition sm:gap-2 sm:px-2.5",
         danger ? "border-loss bg-loss text-white dark:text-background" : style.pill,
       )}
     >
@@ -70,10 +70,10 @@ export function NewsCountdown({ events, window }: { events: CountdownEvent[]; wi
           />
         </span>
       )}
-      <span className="hidden min-w-0 truncate md:inline">
+      <span className="hidden min-w-0 truncate lg:inline">
         {event.currency} {event.title}
       </span>
-      <span className={cn("font-mono tabular", !danger && style.time)}>{time}</span>
+      <span className={cn("shrink-0 font-mono tabular", !danger && style.time)}>{time}</span>
       <GoldSign event={event} compact className={cn(danger && "bg-white/20 text-current")} />
     </Link>
   );

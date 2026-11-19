@@ -85,7 +85,7 @@ export function AccountSwitcher({
           aria-controls={open ? listId : undefined}
           aria-label="Accounts shown"
           className={cn(
-            "inline-flex h-9 max-w-[104px] items-center sm:max-w-[220px] gap-2 rounded-lg border bg-card px-2.5 text-[13px] font-medium shadow-xs transition outline-none hover:bg-accent focus-visible:ring-4 focus-visible:ring-ring/15",
+            "inline-flex h-9 min-w-0 max-w-[104px] items-center sm:max-w-[220px] gap-2 rounded-lg border bg-card px-2.5 text-[13px] font-medium shadow-xs transition outline-none hover:bg-accent focus-visible:ring-4 focus-visible:ring-ring/15",
             pending && "opacity-70",
           )}
         >

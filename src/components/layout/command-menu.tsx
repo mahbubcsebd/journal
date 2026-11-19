@@ -126,13 +126,13 @@ export function CommandMenu({ accounts, today }: { accounts: Account[]; today: s
       <button
         type="button"
         onClick={() => show()}
-        className="hidden h-9 w-56 items-center gap-2 rounded-lg border bg-card px-3 text-[13px] text-muted-foreground shadow-xs transition hover:bg-accent md:inline-flex"
+        className="hidden h-9 w-56 items-center gap-2 rounded-lg border bg-card px-3 text-[13px] text-muted-foreground shadow-xs transition hover:bg-accent xl:inline-flex"
       >
         <Search className="size-4" />
         <span className="flex-1 text-left">Search or jump to…</span>
         <Kbd>⌘K</Kbd>
       </button>
-      <button type="button" onClick={() => show()} aria-label="Search" className="rounded-lg p-2 text-muted-foreground hover:bg-accent md:hidden">
+      <button type="button" onClick={() => show()} aria-label="Search" className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent xl:hidden">
         <Search className="size-4" />
       </button>
 
