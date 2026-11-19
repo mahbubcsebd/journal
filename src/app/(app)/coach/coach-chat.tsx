@@ -84,18 +84,34 @@ export function CoachChat({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollTarget = useRef<string | null>(null);
   const askedRef = useRef(false);
   const touch = useMediaQuery("(pointer: coarse)");
   const disabled = !ready || !configured;
 
-  const scrollToEnd = (smooth = true) =>
-    requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "end" }));
-
+  // Opening a saved chat: start at the latest message.
   useEffect(() => {
-    if (initialMessages.length) scrollToEnd(false);
+    if (initialMessages.length) window.scrollTo({ top: document.documentElement.scrollHeight });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Chat-app scrolling: a sent question moves to the top of the screen, and an
+  // answer is shown from its first line, so nothing hides behind the input box.
+  useEffect(() => {
+    const target = scrollTarget.current;
+    if (!target) return;
+    // Once per message: a second run mid-animation measures the wrong spot.
+    scrollTarget.current = null;
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-msg="${CSS.escape(target)}"]`);
+      if (el) {
+        // Computed by hand: scrollIntoView's smooth mode gets cut short when the
+        // input box shrinks right after sending.
+        const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+        window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - margin, behavior: "smooth" });
+      }
+    });
+  }, [messages]);
 
   async function send(text: string) {
     const message = text.trim();
@@ -103,8 +119,8 @@ export function CoachChat({
     setInput("");
     setBusy(true);
     const tempId = `tmp-${Date.now()}`;
+    scrollTarget.current = tempId;
     setMessages((m) => [...m.filter((x) => !x.error), { id: tempId, role: "user", content: message, toolsUsed: null }]);
-    scrollToEnd();
     try {
       const res = await fetch("/api/coach", {
         method: "POST",
@@ -129,15 +145,17 @@ export function CoachChat({
           return cur ? [{ ...cur, updatedAt: new Date().toISOString() }, ...c.filter((x) => x.id !== id)] : c;
         });
       }
+      scrollTarget.current = data.message.id;
       setMessages((m) => [...m, data.message!]);
     } catch (e) {
+      const errId = `err-${Date.now()}`;
+      scrollTarget.current = errId;
       setMessages((m) => [
         ...m,
-        { id: `err-${Date.now()}`, role: "assistant", content: e instanceof Error ? e.message : String(e), toolsUsed: null, error: true },
+        { id: errId, role: "assistant", content: e instanceof Error ? e.message : String(e), toolsUsed: null, error: true },
       ]);
     } finally {
       setBusy(false);
-      scrollToEnd();
     }
   }
 
@@ -236,10 +254,15 @@ export function CoachChat({
               {messages.map((m) => (
                 <Message key={m.id} m={m} currency={currency} onRetry={retry} />
               ))}
-              {busy && <Thinking />}
+              {busy && (
+                <>
+                  <Thinking />
+                  {/* Room below so the question can scroll to the top while waiting. */}
+                  <div aria-hidden className="h-[55dvh]" />
+                </>
+              )}
             </div>
           )}
-          <div ref={endRef} />
         </div>
 
         <form
@@ -319,11 +342,14 @@ function Welcome({ firstName, onPick, disabled }: { firstName: string; onPick: (
   );
 }
 
+/** Clear the sticky top bar (and alert banners' room) when scrolling a message into view. */
+const SCROLL_MT = "scroll-mt-[calc(4.5rem+env(safe-area-inset-top))] lg:scroll-mt-24";
+
 function Message({ m, currency, onRetry }: { m: Msg; currency: string; onRetry: () => void }) {
   const [copied, setCopied] = useState(false);
   if (m.role === "user") {
     return (
-      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex justify-end">
+      <motion.div data-msg={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={cn("flex justify-end", SCROLL_MT)}>
         <div className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-[15px] whitespace-pre-wrap text-primary-foreground shadow-soft">
           {m.content}
         </div>
@@ -332,7 +358,7 @@ function Message({ m, currency, onRetry }: { m: Msg; currency: string; onRetry: 
   }
   if (m.error) {
     return (
-      <div className="flex gap-3">
+      <div data-msg={m.id} className={cn("flex gap-3", SCROLL_MT)}>
         <Avatar />
         <div className="rounded-2xl rounded-tl-md border border-loss/40 bg-loss-soft/50 px-4 py-3 text-sm">
           <p className="text-loss">{m.content}</p>
@@ -344,7 +370,7 @@ function Message({ m, currency, onRetry }: { m: Msg; currency: string; onRetry: 
     );
   }
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
+    <motion.div data-msg={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={cn("flex gap-3", SCROLL_MT)}>
       <Avatar />
       <div className="min-w-0 flex-1">
         <CoachMarkdown text={m.content} currency={currency} />
