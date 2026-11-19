@@ -166,7 +166,16 @@ export function formatCountdown(ms: number) {
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-export type CountdownEvent = { id: string; title: string; currency: string; impact: string; time: string };
+export type CountdownEvent = {
+  id: string;
+  title: string;
+  currency: string;
+  impact: string;
+  time: string;
+  forecast?: string | null;
+  previous?: string | null;
+  actual?: string | null;
+};
 
 /** The event to show now: one inside its no-trade window, else the next upcoming one. */
 export function pickCountdown(events: CountdownEvent[], now: number, w: NewsWindow) {
@@ -187,3 +196,67 @@ export const IMPACT_STYLE: Record<string, { dot: string; label: string; text: st
   Low: { dot: "bg-muted-foreground/50", label: "Low", text: "text-muted-foreground" },
   Holiday: { dot: "bg-brand", label: "Holiday", text: "text-brand-ink" },
 };
+
+/** "0.3%", "221K", "-1.2B", "<0.10%" → a number (units dropped; both sides of a comparison share them). */
+export function parseFigure(v: string | null | undefined): number | null {
+  if (!v) return null;
+  const m = /-?\d+(?:\.\d+)?/.exec(v.replace(/,/g, "").replace(/−/g, "-"));
+  if (!m) return null;
+  const n = Number(m[0]);
+  const unit = v.trim().slice(-1).toUpperCase();
+  const scale = unit === "K" ? 1e3 : unit === "M" ? 1e6 : unit === "B" ? 1e9 : unit === "T" ? 1e12 : 1;
+  return Number.isFinite(n) ? n * scale : null;
+}
+
+/** Indicators where a higher number is bad news for the currency. */
+const INVERSE = /unemployment|jobless|claimant|initial claims|continuing claims|trade deficit|budget deficit/i;
+/** Releases with no number to compare: the market moves on the words. */
+const WORDS_ONLY = /statement|press conference|speaks|minutes|testifies|testimony|monetary policy report|outlook/i;
+
+export type GoldBias = {
+  /** Likely first move in gold (XAUUSD): up, down, or a big move either way. */
+  dir: "up" | "down" | "volatile";
+  /** "actual": released figure vs forecast. "forecast": what the market expects vs last time. */
+  basis: "actual" | "forecast" | "words";
+  why: string;
+};
+
+/**
+ * Rule-of-thumb gold reaction to a USD release. Gold is priced in dollars, so
+ * USD-positive data usually pushes gold down and USD-negative data pushes it
+ * up. Only USD events; other currencies move gold far less.
+ */
+export function goldBias(e: { title: string; currency: string; impact: string; forecast?: string | null; previous?: string | null; actual?: string | null }): GoldBias | null {
+  if (e.currency !== "USD" || e.impact === "Holiday") return null;
+  const actual = parseFigure(e.actual);
+  const forecast = parseFigure(e.forecast);
+  const previous = parseFigure(e.previous);
+  let basis: GoldBias["basis"];
+  let a: number | null;
+  let b: number | null;
+  let pair: [string, string];
+  if (actual != null && (forecast != null || previous != null)) {
+    basis = "actual";
+    a = actual;
+    b = forecast ?? previous;
+    pair = [`actual ${e.actual}`, forecast != null ? `forecast ${e.forecast}` : `previous ${e.previous}`];
+  } else if (forecast != null && previous != null) {
+    basis = "forecast";
+    a = forecast;
+    b = previous;
+    pair = [`forecast ${e.forecast}`, `previous ${e.previous}`];
+  } else {
+    if (e.impact === "High" && (WORDS_ONLY.test(e.title) || forecast == null)) {
+      return { dir: "volatile", basis: "words", why: "No figure to compare: gold can move sharply either way on the wording." };
+    }
+    return null;
+  }
+  if (a === b) return { dir: "volatile", basis, why: `${pair[0]} = ${pair[1]}: the surprise decides the move.` };
+  const usdStronger = INVERSE.test(e.title) ? a! < b! : a! > b!;
+  const dir = usdStronger ? "down" : "up";
+  return {
+    dir,
+    basis,
+    why: `${pair[0]} ${a! > b! ? ">" : "<"} ${pair[1]} → USD ${usdStronger ? "stronger" : "weaker"} → gold usually ${dir}.`,
+  };
+}

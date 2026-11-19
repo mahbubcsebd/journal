@@ -34,9 +34,12 @@ export async function getUpcomingRelevant(user: Pick<User, "id" | "settings">, l
   const prefs = await getNewsPrefs(user);
   const now = Date.now();
   const events = await getEvents(new Date(now - prefs.window.after * 60_000), new Date(now + 8 * 86_400_000));
+  const timed = events.filter((e) => !e.allDay);
   return {
     prefs,
-    events: events.filter((e) => !e.allDay && isRelevant(e, prefs.minImpact, prefs.currencies)).slice(0, limit),
+    events: timed.filter((e) => isRelevant(e, prefs.minImpact, prefs.currencies)).slice(0, limit),
+    /** The next high/medium releases in any currency, for when nothing matches the filter. */
+    fallback: timed.filter((e) => isRelevant(e, "Medium", null)).slice(0, 3),
   };
 }
 

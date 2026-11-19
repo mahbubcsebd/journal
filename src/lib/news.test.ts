@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ATrade } from "./analytics";
-import { currenciesForSymbol, eventId, formatCountdown, isRelevant, newsTrades, parseFeed, pickCountdown, watchedCurrencies } from "./news";
+import { currenciesForSymbol, eventId, formatCountdown, goldBias, isRelevant, newsTrades, parseFeed, parseFigure, pickCountdown, watchedCurrencies } from "./news";
 
 describe("parseFeed", () => {
   it("parses the weekly feed and skips bad rows", () => {
@@ -66,5 +66,39 @@ describe("countdown", () => {
     expect(pickCountdown(ev, at + 5 * 60_000, w)).toMatchObject({ phase: "after", event: { id: "cpi" } });
     expect(pickCountdown(ev, at + 20 * 60_000, w)).toMatchObject({ phase: "upcoming", event: { id: "pmi" } });
     expect(pickCountdown(ev, at + 2 * 3_600_000, w)).toBeNull();
+  });
+});
+
+describe("goldBias", () => {
+  const ev = (title: string, o: { forecast?: string; previous?: string; actual?: string; currency?: string; impact?: string } = {}) => ({
+    title,
+    currency: o.currency ?? "USD",
+    impact: o.impact ?? "High",
+    forecast: o.forecast ?? null,
+    previous: o.previous ?? null,
+    actual: o.actual ?? null,
+  });
+  it("parses figures with units", () => {
+    expect(parseFigure("221K")).toBe(221_000);
+    expect(parseFigure("-1.2B")).toBe(-1.2e9);
+    expect(parseFigure("0.3%")).toBe(0.3);
+    expect(parseFigure("<0.10%")).toBe(0.1);
+    expect(parseFigure("")).toBeNull();
+  });
+  it("hotter CPI forecast → USD up → gold down", () => {
+    expect(goldBias(ev("CPI m/m", { forecast: "0.4%", previous: "0.2%" }))).toMatchObject({ dir: "down", basis: "forecast" });
+  });
+  it("released figure beats forecast decides once out", () => {
+    expect(goldBias(ev("Non-Farm Employment Change", { forecast: "180K", previous: "150K", actual: "120K" }))).toMatchObject({ dir: "up", basis: "actual" });
+  });
+  it("unemployment is inverse: higher claims → weaker USD → gold up", () => {
+    expect(goldBias(ev("Unemployment Claims", { forecast: "230K", previous: "221K" }))).toMatchObject({ dir: "up" });
+    expect(goldBias(ev("Unemployment Rate", { forecast: "4.1%", previous: "4.2%" }))).toMatchObject({ dir: "down" });
+  });
+  it("equal numbers or speeches are volatile; other currencies and quiet events get no sign", () => {
+    expect(goldBias(ev("ISM Services PMI", { forecast: "52.0", previous: "52.0" }))?.dir).toBe("volatile");
+    expect(goldBias(ev("FOMC Statement"))).toMatchObject({ dir: "volatile", basis: "words" });
+    expect(goldBias(ev("CPI m/m", { currency: "EUR", forecast: "0.4%", previous: "0.2%" }))).toBeNull();
+    expect(goldBias(ev("Some Low Report", { impact: "Low" }))).toBeNull();
   });
 });

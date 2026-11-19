@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { aiConfigured } from "@/lib/ai/gemini";
 import type { EventAnalysis } from "@/lib/ai/schemas";
-import { CURRENCY_FLAG, IMPACT_STYLE, currenciesForSymbol } from "@/lib/news";
+import { CURRENCY_FLAG, IMPACT_STYLE, currenciesForSymbol, goldBias } from "@/lib/news";
+import { GoldSign, goldTitle } from "@/components/news/gold-sign";
 import { requireUser } from "@/lib/session";
 import { cn, formatMoney } from "@/lib/utils";
 import { getEvent, getNewsPrefs, getPastReleases, getTradesOpenedBetween } from "@/server/queries/news";
@@ -82,6 +83,17 @@ async function EventView({ params }: { params: PageProps<"/news/[id]">["params"]
             </div>
           ))}
         </dl>
+        {(() => {
+          const g = goldBias(e);
+          if (!g) return null;
+          return (
+            <div className="relative mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-sm">
+              <span className="font-medium">Gold (XAUUSD)</span>
+              <GoldSign event={e} />
+              <span className="min-w-0 flex-1 text-muted-foreground">{goldTitle(g)}</span>
+            </div>
+          );
+        })()}
         {e.impact === "High" && (
           <p className="relative mt-4 text-sm text-muted-foreground">
             Your no-trade window: <b className="text-foreground">{w.before} min before</b> to <b className="text-foreground">{w.after} min after</b> the release. Spreads widen and

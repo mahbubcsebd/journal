@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CURRENCY_FLAG, formatCountdown, IMPACT_STYLE, type NewsWindow } from "@/lib/news";
 import { cn } from "@/lib/utils";
+import { GoldSign } from "./gold-sign";
 
 export type ListEvent = {
   id: string;
@@ -84,7 +85,10 @@ export function NewsList({ events, timezone, window }: { events: ListEvent[]; ti
                         <span className="text-xs font-medium">{e.currency}</span>
                         <span className={cn("text-[11px] font-medium", s.text)}>· {s.label}</span>
                       </span>
-                      <span className={cn("block truncate font-medium", e.relevant && "text-foreground")}>{e.title}</span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className={cn("truncate font-medium", e.relevant && "text-foreground")}>{e.title}</span>
+                        <GoldSign event={e} compact />
+                      </span>
                       <span className="block text-[11px] text-muted-foreground sm:hidden">
                         A {e.actual ?? "—"} · F {e.forecast ?? "—"} · P {e.previous ?? "—"}
                       </span>

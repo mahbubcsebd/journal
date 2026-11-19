@@ -14,7 +14,7 @@ import { UserMenu } from "./user-menu";
 
 export function Topbar() {
   return (
-    <header className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-2 border-b bg-background/75 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:px-6 lg:h-16 print:hidden">
+    <header className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-1.5 border-b bg-background/75 px-4 sm:gap-2 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:px-6 lg:h-16 print:hidden">
       <Suspense fallback={<Skeleton className="h-9 w-40 rounded-lg" />}>
         <AccountSwitcherSlot />
       </Suspense>
@@ -88,12 +88,23 @@ async function NewsSlot() {
   if (!user) return null;
   // Keep the shared calendar fresh without slowing this page down.
   after(() => ensureFreshCalendar().catch(() => undefined));
-  const { events, prefs } = await getUpcomingRelevant(user).catch(() => ({ events: [], prefs: null }));
+  const { events, prefs, fallback } = await getUpcomingRelevant(user).catch(() => ({ events: [], prefs: null, fallback: [] }));
   if (!prefs) return null;
+  // Nothing for the trader's own filter: still count down to the next big release anywhere.
+  const shown = events.length ? events : fallback;
   return (
     <NewsCountdown
       window={prefs.window}
-      events={events.map((e) => ({ id: e.id, title: e.title, currency: e.currency, impact: e.impact, time: e.time.toISOString() }))}
+      events={shown.map((e) => ({
+        id: e.id,
+        title: e.title,
+        currency: e.currency,
+        impact: e.impact,
+        time: e.time.toISOString(),
+        forecast: e.forecast,
+        previous: e.previous,
+        actual: e.actual,
+      }))}
     />
   );
 }

@@ -14,6 +14,7 @@ import { requireUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { getEvents, getUpcomingRelevant } from "@/server/queries/news";
 import { ensureFreshCalendar } from "@/server/services/news";
+import { GoldSign } from "@/components/news/gold-sign";
 
 export const metadata: Metadata = { title: "Economic calendar" };
 
@@ -120,6 +121,7 @@ async function News({ searchParams }: { searchParams: PageProps<"/news">["search
               <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight sm:text-2xl">
                 <span aria-hidden>{CURRENCY_FLAG[next.currency] ?? "🌐"}</span>
                 {next.currency} {next.title}
+                <GoldSign event={next} className="text-xs" />
               </h2>
               <p className="text-sm text-muted-foreground">
                 {new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(next.time)}
