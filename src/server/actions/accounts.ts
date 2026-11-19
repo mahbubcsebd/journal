@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { tradingAccount } from "@/db/schema";
 import { ACCOUNT_COLORS, EXNESS_ACCOUNT_TYPES } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/session";
+import { SIGNED_OUT_URL } from "@/lib/auth-routes";
 
 const accountSchema = z.object({
   nickname: z.string().trim().min(1, "Give this account a name").max(40),
@@ -28,7 +29,7 @@ export type AccountFormState = { error?: string; fieldErrors?: Record<string, st
 
 async function userOrRedirect() {
   const u = await getCurrentUser();
-  if (!u) redirect("/login");
+  if (!u) redirect(SIGNED_OUT_URL);
   return u;
 }
 

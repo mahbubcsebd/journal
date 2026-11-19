@@ -12,6 +12,7 @@ import { trade, tradeImage, tradingAccount, user } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { sendWeeklyReportIfDue } from "@/server/services/notifications";
 import { rebuildAllDailyStats } from "@/server/services/trades";
+import { SIGNED_OUT_URL } from "@/lib/auth-routes";
 
 const isTimezone = (tz: string) => {
   try {
@@ -33,7 +34,7 @@ export type ProfileState = { error?: string; fieldErrors?: Record<string, string
 
 export async function saveProfile(_: ProfileState, formData: FormData): Promise<ProfileState> {
   const current = await getCurrentUser();
-  if (!current) redirect("/login");
+  if (!current) redirect(SIGNED_OUT_URL);
 
   const parsed = profileSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
@@ -64,7 +65,7 @@ const notificationsSchema = z.object({
 
 export async function saveNotificationSettings(input: z.infer<typeof notificationsSchema>) {
   const current = await getCurrentUser();
-  if (!current) redirect("/login");
+  if (!current) redirect(SIGNED_OUT_URL);
   const data = notificationsSchema.parse(input);
   await db.update(user).set({ settings: { ...current.settings, ...data } }).where(eq(user.id, current.id));
   revalidatePath("/settings");
@@ -76,7 +77,7 @@ const disciplineSchema = z.object({ cooldownMinutes: z.number().int().min(0).max
 /** Cooldown after a losing trade (0 turns it off). */
 export async function saveDisciplineSettings(input: z.infer<typeof disciplineSchema>) {
   const current = await getCurrentUser();
-  if (!current) redirect("/login");
+  if (!current) redirect(SIGNED_OUT_URL);
   const data = disciplineSchema.parse(input);
   await db.update(user).set({ settings: { ...current.settings, ...data } }).where(eq(user.id, current.id));
   revalidatePath("/", "layout");
@@ -84,7 +85,7 @@ export async function saveDisciplineSettings(input: z.infer<typeof disciplineSch
 
 export async function sendWeeklyReportNow(): Promise<{ ok: boolean; message: string }> {
   const current = await getCurrentUser();
-  if (!current) redirect("/login");
+  if (!current) redirect(SIGNED_OUT_URL);
   try {
     const status = await sendWeeklyReportIfDue(current, { force: true });
     return status === "sent"
@@ -99,7 +100,7 @@ export async function sendWeeklyReportNow(): Promise<{ ok: boolean; message: str
 /** Permanently delete the user and everything they own. Requires typing the account email. */
 export async function deleteMyAccount(confirmEmail: string): Promise<{ error?: string }> {
   const current = await getCurrentUser();
-  if (!current) redirect("/login");
+  if (!current) redirect(SIGNED_OUT_URL);
   if (confirmEmail.trim().toLowerCase() !== current.email.toLowerCase()) return { error: "The email doesn't match." };
 
   // Stop paid MetaApi terminals and remove stored screenshots before the rows disappear.
@@ -122,7 +123,7 @@ export async function deleteMyAccount(confirmEmail: string): Promise<{ error?: s
 /** Star or un-star an analytics chart for the Favorites tab. */
 export async function toggleFavoriteChart(id: string) {
   const current = await getCurrentUser();
-  if (!current) redirect("/login");
+  if (!current) redirect(SIGNED_OUT_URL);
   const key = z.string().regex(/^[a-z0-9.-]{1,60}$/).parse(id);
   const now = current.settings.favoriteCharts ?? [];
   const next = now.includes(key) ? now.filter((x) => x !== key) : [...now, key].slice(-40);
@@ -141,7 +142,7 @@ const newsSchema = z.object({
 /** Economic-news alerts: impact floor, currencies, no-trade window. */
 export async function saveNewsSettings(input: z.infer<typeof newsSchema>) {
   const current = await getCurrentUser();
-  if (!current) redirect("/login");
+  if (!current) redirect(SIGNED_OUT_URL);
   const data = newsSchema.parse(input);
   await db.update(user).set({ settings: { ...current.settings, ...data } }).where(eq(user.id, current.id));
   revalidatePath("/", "layout");

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { challenge, tradingAccount } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
+import { SIGNED_OUT_URL } from "@/lib/auth-routes";
 
 const money = (msg: string) => z.coerce.number({ message: msg }).positive(msg);
 const optional = z
@@ -38,7 +39,7 @@ export type ChallengeFormState = { fieldErrors?: Record<string, string[]> };
 
 export async function createChallenge(_: ChallengeFormState, formData: FormData): Promise<ChallengeFormState> {
   const u = await getCurrentUser();
-  if (!u) redirect("/login");
+  if (!u) redirect(SIGNED_OUT_URL);
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
   const [acc] = await db
@@ -53,7 +54,7 @@ export async function createChallenge(_: ChallengeFormState, formData: FormData)
 
 export async function deleteChallenge(id: string) {
   const u = await getCurrentUser();
-  if (!u) redirect("/login");
+  if (!u) redirect(SIGNED_OUT_URL);
   await db.delete(challenge).where(and(eq(challenge.id, id), eq(challenge.userId, u.id)));
   revalidatePath("/challenges");
   redirect("/challenges");

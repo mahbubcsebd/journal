@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/logo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/session";
 import { OnboardingForm } from "./onboarding-form";
+import { SIGNED_OUT_URL } from "@/lib/auth-routes";
 
 export const metadata: Metadata = { title: "Set up your journal" };
 
@@ -26,7 +27,7 @@ export default function OnboardingPage() {
 
 async function Onboarding() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(SIGNED_OUT_URL);
   if (user.onboarded) redirect("/dashboard");
   return <OnboardingForm email={user.email} defaultName={user.name} />;
 }

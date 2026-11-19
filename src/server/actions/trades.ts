@@ -12,10 +12,11 @@ import { computeRMultiple } from "@/lib/trading/metrics";
 import { normalizeSymbol } from "@/lib/trading/symbols";
 import { getCurrentUser } from "@/lib/session";
 import { rebuildDailyStats, tradeRow } from "@/server/services/trades";
+import { SIGNED_OUT_URL } from "@/lib/auth-routes";
 
 async function me() {
   const u = await getCurrentUser();
-  if (!u) redirect("/login");
+  if (!u) redirect(SIGNED_OUT_URL);
   return u;
 }
 

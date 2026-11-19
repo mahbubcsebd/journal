@@ -6,6 +6,7 @@ import { cache } from "react";
 import { db } from "@/db";
 import { tradingAccount, user } from "@/db/schema";
 import { auth } from "./auth";
+import { SIGNED_OUT_URL } from "@/lib/auth-routes";
 
 export const ACCOUNT_FILTER_COOKIE = "jr_accounts";
 export const DATA_MODE_COOKIE = "jr_mode";
@@ -42,7 +43,7 @@ export const getCurrentUser = cache(async () => {
 /** For app pages: must be signed in and onboarded. */
 export async function requireUser() {
   const current = await getCurrentUser();
-  if (!current) redirect("/login");
+  if (!current) redirect(SIGNED_OUT_URL);
   if (!current.onboarded) redirect("/onboarding");
   return current;
 }

@@ -1,7 +1,10 @@
 import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
+import { SIGNED_OUT_URL } from "@/lib/auth-routes";
 
-const PUBLIC_ONLY = ["/login"];
+/** Pages for signed-out visitors; signed-in users go straight to the app. */
+const PUBLIC_ONLY = ["/", "/login"];
+const EXPIRED_FLAG = new URL(SIGNED_OUT_URL, "http://x").searchParams.keys().next().value!;
 
 /**
  * Optimistic auth gate: only checks that a session cookie exists.
@@ -12,7 +15,8 @@ export function proxy(request: NextRequest) {
   const hasSession = Boolean(getSessionCookie(request));
 
   if (PUBLIC_ONLY.includes(pathname)) {
-    if (hasSession) return NextResponse.redirect(new URL("/dashboard", request.url));
+    // A cookie whose session has expired: the app sent the user here, so stay.
+    if (hasSession && !request.nextUrl.searchParams.has(EXPIRED_FLAG)) return NextResponse.redirect(new URL("/dashboard", request.url));
     return NextResponse.next();
   }
 
@@ -26,6 +30,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/login",
     "/onboarding",
     "/dashboard/:path*",
