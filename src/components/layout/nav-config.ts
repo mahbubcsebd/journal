@@ -7,6 +7,7 @@ import {
   FileText,
   FolderInput,
   Gauge,
+  MessagesSquare,
   LayoutDashboard,
   ListOrdered,
   Newspaper,
@@ -28,6 +29,7 @@ export const NAV: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/coach", label: "AI Coach", icon: MessagesSquare },
       { href: "/calendar", label: "Calendar", icon: CalendarDays },
       { href: "/news", label: "News", icon: Newspaper },
       { href: "/trades", label: "Trades", icon: ListOrdered },

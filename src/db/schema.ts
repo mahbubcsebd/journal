@@ -553,6 +553,37 @@ export const notificationLog = pgTable(
   (t) => [uniqueIndex("notification_log_uq").on(t.userId, t.kind, t.key)],
 );
 
+/** AI Coach chats. */
+export const coachConversation = pgTable(
+  "coach_conversation",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    ...timestamps,
+  },
+  (t) => [index("coach_conversation_user_idx").on(t.userId, t.updatedAt)],
+);
+
+export const coachMessage = pgTable(
+  "coach_message",
+  {
+    id: id(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => coachConversation.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // user | assistant
+    content: text("content").notNull(),
+    /** Data the assistant looked up for this answer (tool names). */
+    toolsUsed: jsonb("tools_used").$type<string[]>(),
+    model: text("model"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("coach_message_conversation_idx").on(t.conversationId, t.createdAt)],
+);
+
 /** Economic calendar (shared by every user), refreshed from the weekly feed. */
 export const economicEvent = pgTable(
   "economic_event",

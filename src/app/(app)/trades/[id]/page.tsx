@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -102,6 +102,15 @@ async function TradeView({ params }: { params: PageProps<"/trades/[id]">["params
             <p className="text-xs text-muted-foreground">Net P&amp;L {t.status === "OPEN" && "(so far)"}</p>
           </div>
           <div className="flex gap-1">
+            <Button asChild variant="outline" className="gap-1.5">
+              <Link
+                href={`/coach?ask=${encodeURIComponent(
+                  `Review my ${t.symbol} ${t.side === "LONG" ? "buy" : "sell"} trade (id ${t.id}) in detail: what did I do wrong or right, was there news around it, and what should I do differently next time?`,
+                )}`}
+              >
+                <MessagesSquare /> <span className="max-sm:hidden">Ask coach</span>
+              </Link>
+            </Button>
             <Button asChild={Boolean(nav.prev)} variant="outline" size="icon" disabled={!nav.prev} aria-label="Previous trade">
               {nav.prev ? (
                 <Link href={`/trades/${nav.prev}`}>

@@ -75,26 +75,27 @@ export async function generateJson<T>(opts: {
   return (await generateJsonWithMeta(opts)).data;
 }
 
-export async function generateJsonWithMeta<T>(opts: {
-  system: string;
-  prompt: string;
-  responseSchema: Record<string, unknown>;
-  validate: z.ZodType<T>;
-  temperature?: number;
-}): Promise<{ data: T } & AiMeta> {
-  const key = process.env.GEMINI_API_KEY?.trim();
-  if (!key) throw new AiError("AI insights aren't set up yet. Add GEMINI_API_KEY to the server environment.", "NOT_CONFIGURED");
-  const body = JSON.stringify({
-    systemInstruction: { parts: [{ text: opts.system }] },
-    contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
-    generationConfig: {
-      temperature: opts.temperature ?? 0.4,
-      responseMimeType: "application/json",
-      responseSchema: opts.responseSchema,
-    },
-  });
+export type GeminiPart = {
+  text?: string;
+  thought?: boolean;
+  thoughtSignature?: string;
+  functionCall?: { name: string; args?: Record<string, unknown> };
+  functionResponse?: { name: string; response: Record<string, unknown> };
+};
+export type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
+type GeminiReply = {
+  candidates?: { content?: { role?: string; parts?: GeminiPart[] }; finishReason?: string }[];
+  promptFeedback?: { blockReason?: string };
+};
 
-  // Configured model first, then current ones if Google says it doesn't exist.
+/**
+ * One generateContent call with the shared resilience: configured model,
+ * then fallbacks on busy/retired/slow models, Gemini API then Vertex AI.
+ */
+export async function callGemini(body: Record<string, unknown>, budgetMs = 50_000): Promise<{ reply: GeminiReply } & AiMeta> {
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key) throw new AiError("AI isn't set up yet. Add GEMINI_API_KEY to the server environment.", "NOT_CONFIGURED");
+  const payload = JSON.stringify(body);
   const models = [...new Set([aiModel(), ...FALLBACK_MODELS])];
   const apis = endpoints();
   let res: Response | null = null;
@@ -106,12 +107,12 @@ export async function generateJsonWithMeta<T>(opts: {
       const last = mi === models.length - 1;
       if (cooling(model) && !last) continue;
       // Stay inside the function's time limit.
-      if (Date.now() - started > 50_000) break apis;
+      if (Date.now() - started > budgetMs) break apis;
       try {
         res = await fetch(api.url(model), {
           method: "POST",
           headers: { "content-type": "application/json", "x-goog-api-key": key },
-          body,
+          body: payload,
           signal: AbortSignal.timeout(last ? 25_000 : ATTEMPT_TIMEOUT_MS),
         });
       } catch (e) {
@@ -151,11 +152,27 @@ export async function generateJsonWithMeta<T>(opts: {
     if (res.status === 400) throw new AiError(`Gemini rejected the request: ${msg}`, "BAD_RESPONSE");
     throw new AiError(`Gemini is unavailable right now (${res.status}): ${msg}`, "UNAVAILABLE");
   }
-  const json = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[];
-    promptFeedback?: { blockReason?: string };
-  };
-  if (json.promptFeedback?.blockReason) throw new AiError("Gemini declined to answer this request.", "BAD_RESPONSE");
+  const reply = (await res.json()) as GeminiReply;
+  if (reply.promptFeedback?.blockReason) throw new AiError("Gemini declined to answer this request.", "BAD_RESPONSE");
+  return { reply, ...used };
+}
+
+export async function generateJsonWithMeta<T>(opts: {
+  system: string;
+  prompt: string;
+  responseSchema: Record<string, unknown>;
+  validate: z.ZodType<T>;
+  temperature?: number;
+}): Promise<{ data: T } & AiMeta> {
+  const { reply: json, ...used } = await callGemini({
+    systemInstruction: { parts: [{ text: opts.system }] },
+    contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
+    generationConfig: {
+      temperature: opts.temperature ?? 0.4,
+      responseMimeType: "application/json",
+      responseSchema: opts.responseSchema,
+    },
+  });
   const text =
     json.candidates?.[0]?.content?.parts
       ?.filter((p) => !p.thought)
@@ -174,4 +191,70 @@ export async function generateJsonWithMeta<T>(opts: {
     throw new AiError("Gemini's answer was incomplete. Try again.", "BAD_RESPONSE");
   }
   return { data: out.data, ...used };
+}
+
+export type ToolDeclaration = { name: string; description: string; parameters?: Record<string, unknown> };
+
+/**
+ * Chat with function calling: the model may call tools (run on our server
+ * against the user's own data) several times before writing its answer.
+ */
+export async function chatWithTools(opts: {
+  system: string;
+  history: GeminiContent[];
+  tools: ToolDeclaration[];
+  runTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+  maxSteps?: number;
+  budgetMs?: number;
+}): Promise<{ text: string; toolsUsed: string[] } & AiMeta> {
+  const contents = [...opts.history];
+  const toolsUsed: string[] = [];
+  const started = Date.now();
+  const budget = opts.budgetMs ?? 100_000;
+  let meta: AiMeta | null = null;
+  for (let step = 0; step < (opts.maxSteps ?? 6); step++) {
+    const left = budget - (Date.now() - started);
+    if (left < 8_000) break;
+    const last = step === (opts.maxSteps ?? 6) - 1 || left < 25_000;
+    const { reply, ...used } = await callGemini(
+      {
+        systemInstruction: { parts: [{ text: opts.system }] },
+        contents,
+        // On the last step, no more tools: the model must answer.
+        ...(last ? {} : { tools: [{ functionDeclarations: opts.tools }] }),
+        generationConfig: { temperature: 0.5, maxOutputTokens: 8192 },
+      },
+      Math.min(50_000, left - 5_000),
+    );
+    meta = used;
+    const parts = reply.candidates?.[0]?.content?.parts ?? [];
+    const calls = parts.filter((p) => p.functionCall);
+    if (calls.length === 0) {
+      const text = parts
+        .filter((p) => !p.thought && p.text)
+        .map((p) => p.text)
+        .join("")
+        .trim();
+      if (!text) throw new AiError("Gemini returned an empty answer. Try again.", "BAD_RESPONSE");
+      return { text, toolsUsed, ...used };
+    }
+    // Keep the model's turn as-is (thought signatures included), then answer each call.
+    contents.push({ role: "model", parts });
+    const responses: GeminiPart[] = [];
+    for (const c of calls) {
+      const name = c.functionCall!.name;
+      toolsUsed.push(name);
+      let result: unknown;
+      try {
+        result = await opts.runTool(name, c.functionCall!.args ?? {});
+      } catch (e) {
+        console.error(`[ai] tool ${name} failed`, e);
+        result = { error: e instanceof Error ? e.message : "Tool failed" };
+      }
+      responses.push({ functionResponse: { name, response: { result } } });
+    }
+    contents.push({ role: "user", parts: responses });
+  }
+  if (!meta) throw new AiError("Gemini didn't answer in time. Please try again.", "UNAVAILABLE");
+  throw new AiError("This question needed too many lookups. Try asking something narrower.", "BAD_RESPONSE");
 }

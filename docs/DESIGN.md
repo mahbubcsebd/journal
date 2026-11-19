@@ -5,6 +5,7 @@ Source of truth: src/app/globals.css (CSS vars + `@theme inline`). Light + `.dar
 - Colors (oklch): background, foreground, card, popover, muted(-foreground), border, input, ring, primary, secondary, accent, sidebar.
 - Brand: `brand` (green, hue ~162), `brand-ink` (text-safe), `brand-soft` (tint).
 - P&L semantics: `profit`/`profit-soft` (teal-green), `loss`/`loss-soft` (coral), `chart-up`/`chart-down`, `warning`/`warning-ink`. Lightness-separated for colour-blind safety. Never use raw red/green.
+- Info and categorical: `info`/`info-soft` (blue notes), `chart-1`…`chart-6` (pie/series palette, both themes).
 - Fonts: Geist sans, Geist Mono (numbers), Noto Sans Bengali fallback.
 - Radius: `--radius` 0.75rem → rounded-sm/md/lg/xl.
 - Shadows: `shadow-soft`, `shadow-pop`.
