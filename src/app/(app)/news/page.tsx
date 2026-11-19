@@ -52,10 +52,18 @@ async function News({ searchParams }: { searchParams: PageProps<"/news">["search
   const start = addDays(startOfWeek(todayIn(tz), 1 as WeekStart), week === "next" ? 7 : 0);
   const end = addDays(start, 6);
   const dayOf = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-  const [raw, { events: upcoming, prefs }] = await Promise.all([
-    getEvents(new Date(`${addDays(start, -1)}T00:00:00Z`), new Date(`${addDays(end, 1)}T23:59:59Z`)),
-    getUpcomingRelevant(user, 40),
-  ]);
+  let raw: Awaited<ReturnType<typeof getEvents>>;
+  let upcomingData: Awaited<ReturnType<typeof getUpcomingRelevant>>;
+  try {
+    [raw, upcomingData] = await Promise.all([
+      getEvents(new Date(`${addDays(start, -1)}T00:00:00Z`), new Date(`${addDays(end, 1)}T23:59:59Z`)),
+      getUpcomingRelevant(user, 40),
+    ]);
+  } catch (e) {
+    console.error("[news] calendar unavailable", e);
+    return <CalendarNotReady />;
+  }
+  const { events: upcoming, prefs } = upcomingData;
   const inWeek = raw.filter((e) => dayOf(e.time) >= start && dayOf(e.time) <= end);
   const list: ListEvent[] = inWeek
     .filter((e) => (e.impact === "Holiday" ? impactKey === "all" : impactRank(e.impact) >= impactRank(minImpact)))
@@ -180,6 +188,21 @@ async function News({ searchParams }: { searchParams: PageProps<"/news">["search
         Calendar data: ForexFactory weekly feed{lastUpdate ? ` · updated ${new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(lastUpdate)}` : ""}. Actual numbers may
         appear late; check your broker before trading.
       </p>
+    </div>
+  );
+}
+
+/** Shown when the economic_event table hasn't been created in the database yet. */
+function CalendarNotReady() {
+  return (
+    <div className="grid gap-6">
+      <PageHeader title="Economic calendar" description="Know every release before it hits your chart." />
+      <Card className="grid gap-2 px-6 py-10 text-center">
+        <p className="font-medium">The calendar isn&apos;t set up in the database yet</p>
+        <p className="mx-auto max-w-md text-sm text-muted-foreground">
+          Run the latest database migration (drizzle/0007_economic_calendar.sql — in Supabase: SQL Editor), then reload this page.
+        </p>
+      </Card>
     </div>
   );
 }

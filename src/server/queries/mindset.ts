@@ -6,7 +6,7 @@ import { DEFAULT_COOLDOWN_MINUTES, ZONE_MIN_TRADES } from "@/lib/mindset";
 
 export type MindsetAlert =
   | { kind: "cooldown"; key: string; symbol: string; net: number; currency: string; closedAt: string; until: string }
-  | { kind: "revenge"; key: string; symbol: string; minutesAfter: number; openedAt: string }
+  | { kind: "revenge"; key: string; symbol: string; minutesAfter: number; openedAt: string; count: number }
   | { kind: "avoid"; key: string; symbol: string; openedAt: string; weekday: number; hour: number; trades: number; net: number; currency: string };
 
 const RECENT_HOURS = 3;
@@ -68,11 +68,17 @@ export async function getMindsetAlerts(userId: string, tz: string, cooldownSetti
       until: new Date(loss.closeTime.getTime() + cooldown * 60_000).toISOString(),
     });
   }
+  // One banner per symbol and minute: several positions opened together are one decision.
+  const revenge = new Map<string, Extract<MindsetAlert, { kind: "revenge" }>>();
   for (const r of recent) {
-    if (r.afterLoss != null) {
-      alerts.push({ kind: "revenge", key: `revenge-${r.id}`, symbol: r.symbol, minutesAfter: Math.max(0, Math.round(Number(r.afterLoss))), openedAt: r.openTime.toISOString() });
-    }
+    if (r.afterLoss == null) continue;
+    const minutesAfter = Math.max(0, Math.round(Number(r.afterLoss)));
+    const k = `${r.symbol}-${minutesAfter}`;
+    const seen = revenge.get(k);
+    if (seen) seen.count++;
+    else revenge.set(k, { kind: "revenge", key: `revenge-${r.id}`, symbol: r.symbol, minutesAfter, openedAt: r.openTime.toISOString(), count: 1 });
   }
+  alerts.push(...revenge.values());
 
   // Avoid zones: the day/hour of each recent trade, judged on the last 180 days.
   const cells = [...new Map(recent.map((r) => [`${r.weekday}-${r.hour}`, r])).values()];

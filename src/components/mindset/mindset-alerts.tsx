@@ -43,7 +43,10 @@ async function Alerts() {
           id: a.key,
           tone: "danger",
           link: { href: "/psychology", label: "Psychology" },
-          text: `Possible revenge trade: ${a.symbol} was opened ${a.minutesAfter} min after a loss. Was it on your checklist?`,
+          text:
+            a.count > 1
+              ? `Possible revenge trades: ${a.count} ${a.symbol} positions were opened ${a.minutesAfter} min after a loss. Were they on your checklist?`
+              : `Possible revenge trade: ${a.symbol} was opened ${a.minutesAfter} min after a loss. Was it on your checklist?`,
         };
       case "avoid":
         return {

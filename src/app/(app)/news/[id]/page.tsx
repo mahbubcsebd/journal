@@ -28,7 +28,7 @@ export default function EventPage({ params }: PageProps<"/news/[id]">) {
 
 async function EventView({ params }: { params: PageProps<"/news/[id]">["params"] }) {
   const [user, { id }] = await Promise.all([requireUser(), params]);
-  const e = await getEvent(decodeURIComponent(id));
+  const e = await getEvent(decodeURIComponent(id)).catch(() => null);
   if (!e) notFound();
   const tz = user.timezone;
   const prefs = await getNewsPrefs(user);

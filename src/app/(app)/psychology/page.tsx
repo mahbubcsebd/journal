@@ -107,8 +107,16 @@ async function Psychology({ searchParams }: { searchParams: PageProps<"/psycholo
   ]);
   const allTrades = history?.trades ?? trades;
   const prefs = await getNewsPrefs(user);
+  // The news card is optional: if the calendar table isn't there yet, the rest of the page still works.
   const span = allTrades.length ? [Math.min(...allTrades.map((t) => t.openAt)), Math.max(...allTrades.map((t) => t.openAt))] : null;
-  const newsEvents = span ? (await getEvents(new Date(span[0] - 3_600_000), new Date(span[1] + 3_600_000))).filter((e) => e.impact === "High") : [];
+  const newsEvents = span
+    ? (
+        await getEvents(new Date(span[0] - 3_600_000), new Date(span[1] + 3_600_000)).catch((e) => {
+          console.error("[psychology] calendar unavailable", e);
+          return [];
+        })
+      ).filter((e) => e.impact === "High")
+    : [];
 
   const dayNet = new Map<string, number>();
   for (const t of trades) dayNet.set(t.day, (dayNet.get(t.day) ?? 0) + t.net);
