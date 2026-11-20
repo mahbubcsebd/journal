@@ -1,10 +1,14 @@
 //+------------------------------------------------------------------+
 //| JournalSync.mq5                                                  |
 //| Sends this MT5 account's deals, balance and open positions to    |
-//| your Journal app. Read-only: it never places or changes trades.  |
+//| your Journal app, and guards your trading rules: it warns when a |
+//| new trade breaks them (news window, cooldown, limits, no SL).    |
+//| It never opens trades. It closes one only if you allow it twice: |
+//| the "auto-close" input here AND the switch in Journal settings.  |
 //+------------------------------------------------------------------+
 #property copyright   "Journal"
-#property version     "1.04"
+#property version     "1.05"
+#include <Trade/Trade.mqh>
 #property description "Auto-sync your Exness MT5 trades to Journal."
 #property description "1) Tools → Options → Expert Advisors → tick 'Allow WebRequest for listed URL' and add your Journal URL."
 #property description "2) Paste your sync key below. Attach to any one chart per account."
@@ -13,6 +17,9 @@ input string InpServerUrl        = "__JOURNAL_URL__"; // Journal URL
 input string InpApiKey           = "";                // Sync key (Journal → Accounts → Connect)
 input int    InpHistoryDays      = 90;                // History sent on first run (days)
 input int    InpHeartbeatSeconds = 60;                // Balance & open positions every N seconds
+input bool   InpGuard            = true;              // Discipline guard: alert when a trade breaks your rules
+input bool   InpGuardAutoClose   = false;             // Guard may close rule-breaking trades (also needs Journal settings + Algo Trading)
+input bool   InpSendCandles      = true;              // Send candles around closed trades (replay chart)
 
 #define PAYLOAD_VERSION 1
 #define CHUNK 100          // deals per request (keeps each request small and fast)
@@ -29,6 +36,20 @@ string   g_status       = "starting";
 bool     g_reachable    = false;  // connection test passed
 int      g_totalSent    = 0;      // deals sent since the EA started
 
+// ---- Discipline guard state (from /api/ea/guard) ----
+struct NewsWindow { long start; long end; string currency; string title; };
+NewsWindow g_news[];
+string   g_blocked[];
+long     g_cooldownUntil = 0;
+string   g_cooldownWhy   = "";
+bool     g_guardAlerts   = true;
+bool     g_guardClose    = false;
+int      g_noSlSeconds   = 60;
+datetime g_lastGuard     = 0;
+datetime g_lastCandles   = 0;
+ulong    g_noSlWarned[];
+CTrade   g_trade;
+
 string GvName() { return "JournalSync_" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)); }
 
 string BaseUrl()
@@ -41,7 +62,18 @@ string BaseUrl()
 
 string Endpoint() { return BaseUrl() + "/api/sync/mt5"; }
 
-void ShowStatus() { Comment("Journal sync: ", g_status); }
+string Violations(string symbol); // defined below
+
+void ShowStatus()
+  {
+   string guard = "";
+   if(InpGuard)
+     {
+      string why = Violations(Symbol());
+      guard = (why == "") ? "\nGuard: OK to trade " + Symbol() : "\nGuard: DON'T trade " + Symbol() + " now: " + why;
+     }
+   Comment("Journal sync: ", g_status, guard);
+  }
 
 // Explain codes that aren't HTTP statuses. MT5 doesn't follow redirects and reports
 // them, and failed TLS/connections, as codes such as 1001.
@@ -217,6 +249,196 @@ bool LoggedIn()
    return TerminalInfoInteger(TERMINAL_CONNECTED) && AccountInfoString(ACCOUNT_CURRENCY) != "" && AccountInfoInteger(ACCOUNT_LOGIN) > 0;
   }
 
+// ---- Small HTTP helpers ----
+string AuthHeader() { return "Authorization: Bearer " + InpApiKey + "\r\n"; }
+
+int HttpGet(string path, string &out)
+  {
+   char none[], result[];
+   string responseHeaders;
+   ResetLastError();
+   int code = WebRequest("GET", BaseUrl() + path, AuthHeader(), TIMEOUT_MS, none, result, responseHeaders);
+   out = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
+   return code;
+  }
+
+int HttpPostJson(string path, string body)
+  {
+   char data[], result[];
+   string responseHeaders;
+   int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
+   if(len > 0) ArrayResize(data, len - 1);
+   ResetLastError();
+   return WebRequest("POST", BaseUrl() + path, "Content-Type: application/json\r\n" + AuthHeader(), TIMEOUT_MS, data, result, responseHeaders);
+  }
+
+string LoginStr() { return IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)); }
+
+// ---- Guard ----
+void FetchGuard()
+  {
+   string text;
+   int code = HttpGet("/api/ea/guard?login=" + LoginStr(), text);
+   g_lastGuard = TimeLocal();
+   if(code != 200) { Print("JournalSync guard: rules not loaded (HTTP ", code, ")"); return; }
+   string lines[];
+   int n = StringSplit(text, '\n', lines);
+   ArrayResize(g_news, 0);
+   ArrayResize(g_blocked, 0);
+   g_cooldownUntil = 0;
+   g_cooldownWhy = "";
+   for(int i = 0; i < n; i++)
+     {
+      string line = lines[i];
+      int eq = StringFind(line, "=");
+      if(eq <= 0) continue;
+      string k = StringSubstr(line, 0, eq);
+      string v = StringSubstr(line, eq + 1);
+      if(k == "alerts") g_guardAlerts = (v == "1");
+      else if(k == "autoclose") g_guardClose = (v == "1");
+      else if(k == "nosl") g_noSlSeconds = (int)StringToInteger(v);
+      else if(k == "blocked") { int b = ArraySize(g_blocked); ArrayResize(g_blocked, b + 1); g_blocked[b] = v; }
+      else if(k == "cooldown" || k == "news")
+        {
+         string p[];
+         int c = StringSplit(v, '|', p);
+         if(k == "cooldown" && c >= 1) { g_cooldownUntil = StringToInteger(p[0]); g_cooldownWhy = (c >= 2) ? p[1] : ""; }
+         if(k == "news" && c >= 4)
+           {
+            int w = ArraySize(g_news);
+            ArrayResize(g_news, w + 1);
+            g_news[w].start = StringToInteger(p[0]);
+            g_news[w].end = StringToInteger(p[1]);
+            g_news[w].currency = p[2];
+            g_news[w].title = p[3];
+           }
+        }
+     }
+  }
+
+// Does news for this currency move the symbol? (EURUSD → EUR, USD; gold, oil, US indices → USD)
+bool Moves(string symbol, string currency)
+  {
+   string s = symbol;
+   StringToUpper(s);
+   if(StringFind(s, currency) >= 0) return true;
+   if(currency != "USD") return false;
+   string usd[] = {"XAU", "XAG", "BTC", "ETH", "US30", "US100", "US500", "USTEC", "NAS", "SPX", "DJ", "USOIL", "XTI", "WTI", "UKOIL", "XBR"};
+   for(int i = 0; i < ArraySize(usd); i++)
+      if(StringFind(s, usd[i]) == 0) return true;
+   return false;
+  }
+
+// Why a trade opened now on this symbol breaks the rules ("" = it doesn't).
+string Violations(string symbol)
+  {
+   long now = (long)TimeGMT();
+   string why = "";
+   for(int i = 0; i < ArraySize(g_news); i++)
+      if(now >= g_news[i].start && now <= g_news[i].end && Moves(symbol, g_news[i].currency))
+        { why += "news window (" + g_news[i].currency + " " + g_news[i].title + "); "; break; }
+   if(g_cooldownUntil > now)
+      why += "cooldown after a loss, " + IntegerToString((int)((g_cooldownUntil - now) / 60) + 1) + " min left (" + g_cooldownWhy + "); ";
+   for(int i = 0; i < ArraySize(g_blocked); i++) why += g_blocked[i] + "; ";
+   return why;
+  }
+
+void Warn(string symbol, string kind, string message)
+  {
+   string msg = "Journal guard: " + message;
+   Print(msg);
+   if(g_guardAlerts)
+     {
+      Alert(msg);
+      SendNotification(StringSubstr(msg, 0, 255)); // MT5 mobile push, if a MetaQuotes ID is set
+     }
+   // Also to the Journal app (phone push / Telegram).
+   HttpPostJson("/api/ea/event", StringFormat("{\"login\":\"%s\",\"symbol\":\"%s\",\"kind\":\"%s\",\"message\":\"%s\"}",
+                LoginStr(), Esc(symbol), kind, Esc(message)));
+  }
+
+// A position was just opened: check it against the rules.
+void GuardNewPosition(ulong positionId, string symbol)
+  {
+   if(!InpGuard) return;
+   if(TimeLocal() - g_lastGuard > 120) FetchGuard();
+   string why = Violations(symbol);
+   if(why == "") return;
+   bool closeIt = InpGuardAutoClose && g_guardClose;
+   Warn(symbol, "rule", symbol + " opened against your rules: " + why + (closeIt ? "closing it." : "think twice."));
+   if(closeIt)
+     {
+      if(PositionSelectByTicket(positionId) && g_trade.PositionClose(positionId))
+         Print("JournalSync guard: closed position ", positionId);
+      else
+         Print("JournalSync guard: could not close ", positionId, " (enable Algo Trading) ", g_trade.ResultRetcodeDescription());
+     }
+  }
+
+// Positions still without a stop loss a minute after opening.
+void GuardStops()
+  {
+   if(!InpGuard || g_noSlSeconds <= 0) return;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0 || PositionGetDouble(POSITION_SL) != 0) continue;
+      if(TimeCurrent() - (datetime)PositionGetInteger(POSITION_TIME) < g_noSlSeconds) continue;
+      bool warned = false;
+      for(int j = 0; j < ArraySize(g_noSlWarned); j++) if(g_noSlWarned[j] == ticket) { warned = true; break; }
+      if(warned) continue;
+      int n = ArraySize(g_noSlWarned);
+      ArrayResize(g_noSlWarned, n + 1);
+      g_noSlWarned[n] = ticket;
+      Warn(PositionGetString(POSITION_SYMBOL), "no_sl", PositionGetString(POSITION_SYMBOL) + " has no stop loss. Set one now.");
+     }
+  }
+
+// ---- Candles for the replay chart (/api/ea/candles) ----
+ENUM_TIMEFRAMES Tf(int minutes)
+  {
+   switch(minutes)
+     {
+      case 1: return PERIOD_M1;
+      case 5: return PERIOD_M5;
+      case 15: return PERIOD_M15;
+      case 60: return PERIOD_H1;
+      case 240: return PERIOD_H4;
+     }
+   return PERIOD_M5;
+  }
+
+void SendCandles()
+  {
+   g_lastCandles = TimeLocal();
+   string text;
+   if(HttpGet("/api/ea/candles?login=" + LoginStr(), text) != 200) return;
+   string lines[];
+   int n = StringSplit(text, '\n', lines);
+   for(int i = 0; i < n; i++)
+     {
+      if(StringFind(lines[i], "need=") != 0) continue;
+      string p[];
+      if(StringSplit(StringSubstr(lines[i], 5), '|', p) < 5) continue;
+      string symbol = p[1];
+      long off = ServerOffset();
+      datetime from = (datetime)(StringToInteger(p[2]) + off);
+      datetime to = (datetime)(StringToInteger(p[3]) + off);
+      int tf = (int)StringToInteger(p[4]);
+      MqlRates rates[];
+      int got = CopyRates(symbol, Tf(tf), from, to, rates);
+      if(got <= 0) { Print("JournalSync: no candles for ", symbol, " yet (", GetLastError(), ")"); continue; }
+      string arr = "";
+      for(int r = 0; r < got; r++)
+        {
+         if(arr != "") arr += ",";
+         arr += StringFormat("[%I64d,%s,%s,%s,%s]", ToUtc(rates[r].time), Num(rates[r].open), Num(rates[r].high), Num(rates[r].low), Num(rates[r].close));
+        }
+      HttpPostJson("/api/ea/candles", "{\"login\":\"" + LoginStr() + "\",\"position\":\"" + p[0] + "\",\"tf\":" + IntegerToString(tf) + ",\"rates\":[" + arr + "]}");
+      Sleep(GAP_MS);
+     }
+  }
+
 void SyncNow()
   {
    if(!LoggedIn())
@@ -280,6 +502,7 @@ int OnInit()
      }
    if(GlobalVariableCheck(GvName())) g_syncedUntil = (datetime)GlobalVariableGet(GvName());
    g_pending = true;
+   if(InpGuard) FetchGuard();
    EventSetTimer(5);
    ShowStatus();
    return(INIT_SUCCEEDED);
@@ -293,7 +516,10 @@ void OnDeinit(const int reason)
 
 void OnTradeTransaction(const MqlTradeTransaction &trans, const MqlTradeRequest &request, const MqlTradeResult &result)
   {
-   if(trans.type == TRADE_TRANSACTION_DEAL_ADD) g_pending = true;
+   if(trans.type != TRADE_TRANSACTION_DEAL_ADD) return;
+   g_pending = true;
+   if(HistoryDealSelect(trans.deal) && HistoryDealGetInteger(trans.deal, DEAL_ENTRY) == DEAL_ENTRY_IN)
+      GuardNewPosition((ulong)HistoryDealGetInteger(trans.deal, DEAL_POSITION_ID), HistoryDealGetString(trans.deal, DEAL_SYMBOL));
   }
 
 void OnTimer()
@@ -302,6 +528,9 @@ void OnTimer()
    int wait = (g_failures == 0) ? 0 : (g_failures < 3 ? 30 : 120);
    if(g_failures > 0 && TimeLocal() - g_lastAttempt < wait) { ShowStatus(); return; }
    if(g_pending || TimeLocal() - g_lastBeat >= InpHeartbeatSeconds) SyncNow();
+   if(g_reachable && InpGuard && TimeLocal() - g_lastGuard >= 60) FetchGuard();
+   GuardStops();
+   if(g_reachable && InpSendCandles && TimeLocal() - g_lastCandles >= 300) SendCandles();
    ShowStatus();
   }
 

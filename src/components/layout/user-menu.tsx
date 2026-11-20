@@ -13,9 +13,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/lib/auth-client";
 import { initials } from "@/lib/utils";
+import { useT } from "@/components/i18n/t";
 
 export function UserMenu({ name, email }: { name: string; email: string }) {
   const { resolvedTheme, setTheme } = useTheme();
+  const t = useT();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -31,10 +33,10 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/accounts"><Wallet /> Trading accounts</Link>
+          <Link href="/accounts"><Wallet /> {t("Trading accounts")}</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/settings"><Settings /> Settings</Link>
+          <Link href="/settings"><Settings /> {t("Settings")}</Link>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="sm:hidden"
@@ -43,7 +45,7 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
             setTheme(resolvedTheme === "dark" ? "light" : "dark");
           }}
         >
-          {resolvedTheme === "dark" ? <Sun /> : <Moon />} {resolvedTheme === "dark" ? "Light theme" : "Dark theme"}
+          {resolvedTheme === "dark" ? <Sun /> : <Moon />} {t(resolvedTheme === "dark" ? "Light theme" : "Dark theme")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -53,7 +55,7 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
             window.location.replace("/login");
           }}
         >
-          <LogOut /> Sign out
+          <LogOut /> {t("Sign out")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -34,6 +34,10 @@ Migration Supabase er shob table e **Row Level Security** on kore (policy chara)
 er public Data API diye keu kichu porte/likhte parbe na; app ta direct database connection diye
 chole, tai app er kono shomossa hoy na.
 
+Nijer computer theke database e connect na hole: Supabase → **SQL Editor** e `drizzle/` folder er
+notun `.sql` file gula (jemon `0006`…`0010`) number er order e paste kore **Run** koro. Prottek ta
+bar bar chalano jay (already thakle skip kore).
+
 ## 3. Gmail (OTP email pathanor jonno)
 
 1. Google Account → **Security** → **2-Step Verification** on koro.
@@ -73,12 +77,25 @@ chole, tai app er kono shomossa hoy na.
 | `GEMINI_MODEL` | *(optional)* khali rakho: default `gemini-flash-latest` (Google er current Flash model) |
 | `NEWS_FEED_URLS` | *(optional)* khali rakho: default ForexFactory weekly calendar feed |
 | `METAAPI_TOKEN` | *(optional, paid)* <https://app.metaapi.cloud> → API access token |
+| `VAPID_PUBLIC_KEY` | *(optional, phone/browser push)* `npx web-push generate-vapid-keys` er **Public Key** |
+| `VAPID_PRIVATE_KEY` | same command er **Private Key** (secret — kauke dekhabe na) |
+| `VAPID_SUBJECT` | `mailto:tomar@gmail.com` |
+| `TELEGRAM_BOT_TOKEN` | *(optional, Telegram alert)* Telegram e **@BotFather** → `/newbot` → token |
+| `TELEGRAM_BOT_USERNAME` | bot er username (jemon `MyJournalBot`, `@` chara) |
+| `TELEGRAM_WEBHOOK_SECRET` | `openssl rand -hex 24` er output (shudhu letter/number) |
 
    `openssl` na thakle: <https://generate-secret.vercel.app/32> theke random value nite paro.
 3. **Deploy**. Prothom deploy er por project URL ta jodi alada hoy, `BETTER_AUTH_URL` ar
    `NEXT_PUBLIC_APP_URL` update kore **Redeploy** koro.
 4. **Cron**: `vercel.json` theke daily job (`/api/cron/daily`, 00:17 UTC) nijei set hoye jay. Vercel
    `CRON_SECRET` header nijei pathay. Eta weekly summary, goal alert email ar MetaApi catch-up sync kore.
+
+5. **Alert cron (recommended)**: Hobby plan e Vercel cron din e ekbar chole, tai news er 15 minute age
+   reminder er jonno free <https://cron-job.org> e ekta job banao:
+   URL `https://<app>/api/cron/alerts`, protiti **5 minute**, header
+   `Authorization: Bearer <CRON_SECRET>`. (EA chalu thakle protiti sync eo alert jay, ar app khulleo.)
+6. **Telegram (optional)**: env set kore redeploy → app e **Settings → Alerts & app → Activate bot
+   (once)** → **Connect Telegram** → Telegram e **Start** chapo.
 
 Custom domain chaile: Vercel → Project → **Settings → Domains**. Domain add korar por
 `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` notun domain e bodle redeploy koro.

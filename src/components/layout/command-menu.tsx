@@ -32,6 +32,7 @@ import { setAccountFilter } from "@/server/actions/account-filter";
 import { createNote } from "@/server/actions/notes";
 import { searchTrades } from "@/server/actions/search";
 import { ALL_NAV_ITEMS } from "./nav-config";
+import { useT } from "@/components/i18n/t";
 
 type Account = { id: string; nickname: string; login: string; color: string };
 type Hit = Awaited<ReturnType<typeof searchTrades>>[number];
@@ -62,6 +63,7 @@ export function CommandMenu({ accounts, today }: { accounts: Account[]; today: s
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  const tr = useT();
   const [page, setPage] = useState<"root" | "shortcuts">("root");
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
@@ -129,7 +131,7 @@ export function CommandMenu({ accounts, today }: { accounts: Account[]; today: s
         className="hidden h-9 w-56 items-center gap-2 rounded-lg border bg-card px-3 text-[13px] text-muted-foreground shadow-xs transition hover:bg-accent xl:inline-flex"
       >
         <Search className="size-4" />
-        <span className="flex-1 text-left">Search or jump to…</span>
+        <span className="flex-1 text-left">{tr("Search or jump to…")}</span>
         <Kbd>⌘K</Kbd>
       </button>
       <button type="button" onClick={() => show()} aria-label="Search" className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent xl:hidden">
@@ -229,8 +231,8 @@ export function CommandMenu({ accounts, today }: { accounts: Account[]; today: s
                   {ALL_NAV_ITEMS.map((n) => {
                     const key = Object.entries(GO_KEYS).find(([, h]) => h === n.href)?.[0];
                     return (
-                      <CommandItem key={n.href} value={`go ${n.label}`} onSelect={() => run(() => router.push(n.href))} className={item}>
-                        <n.icon /> {n.label}
+                      <CommandItem key={n.href} value={`go ${n.label} ${tr(n.label)}`} onSelect={() => run(() => router.push(n.href))} className={item}>
+                        <n.icon /> {tr(n.label)}
                         {key && <span className="ml-auto"><Kbd>G {key.toUpperCase()}</Kbd></span>}
                       </CommandItem>
                     );

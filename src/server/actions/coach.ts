@@ -4,7 +4,7 @@ import { and, count, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { coachConversation, coachMemory, coachMessage, goal, note, user as userTable, type UserSettings } from "@/db/schema";
+import { coachConversation, coachMemory, coachMessage, goal, note, pretradeLog, user as userTable, type UserSettings } from "@/db/schema";
 import { coachAction } from "@/lib/coach-blocks";
 import { markdownToDoc } from "@/lib/doc";
 import { GOAL_METRICS, PERIOD_LABEL } from "@/lib/goals";
@@ -67,6 +67,22 @@ export async function preTradeCheckAction(input: z.input<typeof preTradeInput>):
     console.error("[pretrade] failed", e);
     return { ok: false, error: e instanceof Error ? e.message : "Couldn't run the check." };
   }
+  // Keep every check, so the plan can be compared with what was traded.
+  await db
+    .insert(pretradeLog)
+    .values({
+      userId: user.id,
+      accountId: result.account.id,
+      symbol: planned.symbol.toUpperCase(),
+      side: planned.side,
+      entry: planned.entry,
+      sl: planned.sl ?? null,
+      tp: planned.tp ?? null,
+      lots: planned.lots,
+      verdict: result.verdict,
+      checks: result.checks.map((c) => ({ id: c.id, level: c.level, title: c.title })),
+    })
+    .catch((e) => console.warn("[pretrade] log failed", e));
   let ai: string | null = null;
   if (aiConfigured()) {
     try {

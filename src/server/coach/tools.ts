@@ -1,7 +1,8 @@
 import "server-only";
 import { and, asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { coachMemory, type User } from "@/db/schema";
+import { coachMemory, tradeCandles, type User } from "@/db/schema";
+import { downsample } from "@/lib/replay";
 import type { ToolDeclaration } from "@/lib/ai/gemini";
 import { groupBy, tiltPatterns, type ATrade, type GroupRow } from "@/lib/analytics";
 import { addDays, todayIn } from "@/lib/dates";
@@ -58,7 +59,7 @@ export const COACH_TOOLS: ToolDeclaration[] = [
   },
   {
     name: "get_trade",
-    description: "Everything about one trade by id: prices, SL/TP, P&L, R, timing, journal (setup, checklist, emotions, notes, mistakes) and high-impact news around its entry.",
+    description: "Everything about one trade by id: prices, SL/TP, P&L, R, timing, journal (setup, checklist, emotions, notes, mistakes), high-impact news around its entry, and the price candles around it when the EA sent them.",
     parameters: { type: "OBJECT", properties: { id: { type: "STRING" } }, required: ["id"] },
   },
   {
@@ -199,7 +200,10 @@ export async function runCoachTool(user: User, name: string, args: Record<string
       if (!id) return { error: "id is required" };
       const t = await getTrade(user.id, id);
       if (!t) return { error: "Trade not found" };
-      const pre = await getNewsPrefs(user);
+      const [pre, [candles]] = await Promise.all([
+        getNewsPrefs(user),
+        db.select().from(tradeCandles).where(eq(tradeCandles.tradeId, t.id)).limit(1).catch(() => []),
+      ]);
       const around = await getEvents(new Date(t.openTime.getTime() - 2 * 3_600_000), new Date(t.openTime.getTime() + 2 * 3_600_000)).catch(() => []);
       const time = (d: Date | null) => (d ? new Intl.DateTimeFormat("en-GB", { timeZone: tz, dateStyle: "medium", timeStyle: "short" }).format(d) : null);
       return {
@@ -249,6 +253,13 @@ export async function runCoachTool(user: User, name: string, args: Record<string
             actual: e.actual,
           })),
         noTradeWindow: pre.window,
+        priceAction: candles
+          ? {
+              timeframeMinutes: candles.timeframe,
+              note: "Candles around the trade, merged to ≤40 bars: [time (unix s UTC), open, high, low, close]. Use them to judge entry timing, stop placement and exit.",
+              bars: downsample(candles.candles, 40),
+            }
+          : null,
       };
     }
 

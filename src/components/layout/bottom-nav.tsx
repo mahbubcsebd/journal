@@ -9,6 +9,7 @@ import { Logo } from "@/components/brand/logo";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { NavList } from "./sidebar";
+import { useT } from "@/components/i18n/t";
 
 const TABS = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -31,6 +32,7 @@ function ActiveBar() {
 }
 
 function Bar({ pathname }: { pathname: string | null }) {
+  const tr = useT();
   const [more, setMore] = useState(false);
   const inTabs = TABS.some((t) => pathname === t.href || pathname?.startsWith(t.href + "/"));
 
@@ -61,7 +63,7 @@ function Bar({ pathname }: { pathname: string | null }) {
                   />
                 )}
                 <t.icon className={cn("size-[22px]", active && "text-brand-ink")} strokeWidth={active ? 2.2 : 1.8} />
-                {t.label}
+                {tr(t.label)}
               </Link>
             );
           })}
@@ -76,7 +78,7 @@ function Bar({ pathname }: { pathname: string | null }) {
           >
             {!inTabs && pathname && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-brand" />}
             <Menu className={cn("size-[22px]", !inTabs && pathname && "text-brand-ink")} strokeWidth={1.8} />
-            More
+            {tr("More")}
           </button>
         </div>
       </nav>

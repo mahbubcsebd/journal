@@ -110,7 +110,7 @@ export function SettingsForm(props: {
   );
 }
 
-function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint: string }) {
+export function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint: string }) {
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4">
       <span className="grid gap-0.5">

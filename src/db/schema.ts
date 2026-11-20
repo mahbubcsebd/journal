@@ -79,6 +79,21 @@ export type UserSettings = {
   /** Automatic AI coach reviews (default on). */
   coachDailyReport?: boolean;
   coachWeeklyReport?: boolean;
+  /** MT5 guard: alert in MT5 when a trade breaks a rule (default on). */
+  guardAlerts?: boolean;
+  /** MT5 guard: also close such trades (default off; the EA must allow it too). */
+  guardAutoClose?: boolean;
+  /** Phone/Telegram alerts by type (default on). */
+  notifyNews?: boolean;
+  notifyCooldown?: boolean;
+  notifyLimits?: boolean;
+  notifyReviews?: boolean;
+  notifyGuard?: boolean;
+  /** Minutes before high-impact news to send the reminder (default 15). */
+  notifyNewsMinutes?: number;
+  /** Telegram chat that receives alerts, and the one-time code that links it. */
+  telegramChatId?: string;
+  telegramLink?: { code: string; expires: number };
 };
 
 export type JournalPremarket = {
@@ -699,3 +714,54 @@ export type User = typeof user.$inferSelect;
 export type TradingAccount = typeof tradingAccount.$inferSelect;
 export type Trade = typeof trade.$inferSelect;
 export type Deal = typeof deal.$inferSelect;
+
+/** Every pre-trade check, so plan can be compared with what was actually traded. */
+export const pretradeLog = pgTable(
+  "pretrade_log",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accountId: text("account_id").references(() => tradingAccount.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    side: text("side").$type<"LONG" | "SHORT">().notNull(),
+    entry: price("entry").notNull(),
+    sl: price("sl"),
+    tp: price("tp"),
+    lots: real("lots").notNull(),
+    verdict: text("verdict").$type<"ok" | "caution" | "stop">().notNull(),
+    checks: jsonb("checks").$type<{ id: string; level: string; title: string }[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("pretrade_log_user_idx").on(t.userId, t.createdAt)],
+);
+
+/** Browsers/phones that receive web push alerts. */
+export const pushSubscription = pgTable(
+  "push_subscription",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("push_subscription_endpoint_uq").on(t.endpoint), index("push_subscription_user_idx").on(t.userId)],
+);
+
+/** Price candles around a trade, sent by the EA, for the replay chart. */
+export const tradeCandles = pgTable("trade_candles", {
+  tradeId: text("trade_id")
+    .primaryKey()
+    .references(() => trade.id, { onDelete: "cascade" }),
+  /** Bar size in minutes. */
+  timeframe: integer("timeframe").notNull(),
+  /** [time (unix s, UTC), open, high, low, close][] */
+  candles: jsonb("candles").$type<[number, number, number, number, number][]>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

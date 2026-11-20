@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { CURRENCY_FLAG, formatCountdown, pickCountdown, type CountdownEvent, type NewsWindow } from "@/lib/news";
 import { cn } from "@/lib/utils";
 import { GoldSign } from "./gold-sign";
+import { useT } from "@/components/i18n/t";
 
 /** Pill colour by the news priority; the no-trade window is the loudest. */
 const IMPACT = {
@@ -20,6 +21,7 @@ const IMPACT = {
  */
 export function NewsCountdown({ events, window }: { events: CountdownEvent[]; window: NewsWindow }) {
   const [now, setNow] = useState<number | null>(null);
+  const t = useT();
   useEffect(() => {
     const tick = () => setNow(Date.now());
     tick();
@@ -36,7 +38,7 @@ export function NewsCountdown({ events, window }: { events: CountdownEvent[]; wi
         className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border bg-card px-2.5 text-[13px] text-muted-foreground shadow-xs transition hover:bg-accent"
       >
         <Newspaper className="size-4" />
-        <span className="hidden xl:inline">No major news</span>
+        <span className="hidden xl:inline">{t("No major news")}</span>
       </Link>
     );
   }
@@ -44,7 +46,7 @@ export function NewsCountdown({ events, window }: { events: CountdownEvent[]; wi
   const danger = phase !== "upcoming";
   const style = IMPACT[event.impact as keyof typeof IMPACT] ?? IMPACT.Low;
   const time = phase === "after" ? `+${formatCountdown(ms)}` : formatCountdown(ms);
-  const label = phase === "before" ? "No new trades" : phase === "after" ? "Just released" : `${event.impact} impact`;
+  const label = t(phase === "before" ? "No new trades" : phase === "after" ? "Just released" : `${event.impact} impact`);
 
   return (
     <Link

@@ -8,10 +8,12 @@ import { NewsCountdown } from "@/components/news/news-countdown";
 import { SessionBar, SessionPill } from "@/components/sessions/session-clock";
 import { getUpcomingRelevant } from "@/server/queries/news";
 import { ensureFreshCalendar } from "@/server/services/news";
+import { runUserAlerts } from "@/server/services/alerts";
 import { after } from "next/server";
 import { CommandMenu } from "./command-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
+import { LocaleSync } from "@/components/i18n/t";
 
 export function Topbar() {
   return (
@@ -66,7 +68,12 @@ async function AccountSwitcherSlot() {
 async function UserSlot() {
   const user = await getCurrentUser();
   if (!user) return null;
-  return <UserMenu name={user.name} email={user.email} />;
+  return (
+    <>
+      <UserMenu name={user.name} email={user.email} />
+      <LocaleSync locale={user.settings.locale === "bn" ? "bn" : "en"} />
+    </>
+  );
 }
 
 async function CommandSlot() {
@@ -112,7 +119,10 @@ async function NewsSlot() {
   const user = await getCurrentUser();
   if (!user) return null;
   // Keep the shared calendar fresh without slowing this page down.
-  after(() => ensureFreshCalendar().catch(() => undefined));
+  after(async () => {
+    await ensureFreshCalendar().catch(() => undefined);
+    await runUserAlerts(user).catch(() => undefined);
+  });
   const { events, prefs, fallback } = await getUpcomingRelevant(user).catch(() => ({ events: [], prefs: null, fallback: [] }));
   if (!prefs) return null;
   // Nothing for the trader's own filter: still count down to the next big release anywhere.

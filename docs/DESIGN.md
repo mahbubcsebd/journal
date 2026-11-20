@@ -29,6 +29,8 @@ src/components/ui (shadcn/ui pattern, Radix + cmdk): button, card, badge, input,
 - Mobile: app shell has a bottom tab bar (components/layout/bottom-nav.tsx); pad for `env(safe-area-inset-*)`; inputs are 16px on phones so iOS doesn't zoom.
 - Every popup is the shadcn `Dialog` (side drawers use `Sheet`, which is the same Radix Dialog). Confirmations use `useConfirm()` / `usePrompt()` from confirm-dialog.tsx, never `window.confirm()` / `window.prompt()`.
 
+- Language: write UI text in English and translate with `t()` — `useT()` / `<T>` in client components (cookie `jr_locale`), `getT()` in server components inside Suspense; Bangla strings live in `src/lib/i18n.ts` (missing ones fall back to English). `PageHeader` translates itself.
+
 ## Don'ts
 - No hardcoded hex/hsl colors in components; use tokens.
 - No color-only meaning for profit/loss (add sign/icon).

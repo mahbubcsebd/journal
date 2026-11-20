@@ -71,6 +71,13 @@
       "when": 1795071439981,
       "tag": "0009_coach_plus",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795148338345,
+      "tag": "0010_discipline_alerts_replay",
+      "breakpoints": true
     }
   ]
 }

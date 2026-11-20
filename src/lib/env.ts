@@ -4,7 +4,12 @@
  */
 const REQUIRED = ["DATABASE_URL", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "NEXT_PUBLIC_APP_URL"] as const;
 const PRODUCTION_REQUIRED = ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM", "CRON_SECRET", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const;
-const OPTIONAL = { GEMINI_API_KEY: "AI insights are disabled", METAAPI_TOKEN: "MetaApi cloud sync is disabled (the MT5 EA still works)" } as const;
+const OPTIONAL = {
+  GEMINI_API_KEY: "AI insights are disabled",
+  METAAPI_TOKEN: "MetaApi cloud sync is disabled (the MT5 EA still works)",
+  VAPID_PRIVATE_KEY: "phone/browser push alerts are disabled (npx web-push generate-vapid-keys)",
+  TELEGRAM_BOT_TOKEN: "Telegram alerts are disabled",
+} as const;
 
 export function checkEnv() {
   const prod = process.env.NODE_ENV === "production";

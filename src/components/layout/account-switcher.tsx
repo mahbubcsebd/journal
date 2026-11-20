@@ -15,6 +15,7 @@ import {
 import { ResponsivePopover } from "@/components/ui/responsive-popover";
 import { cn } from "@/lib/utils";
 import { setAccountFilter } from "@/server/actions/account-filter";
+import { useT } from "@/components/i18n/t";
 
 export type SwitcherAccount = {
   id: string;
@@ -36,6 +37,7 @@ export function AccountSwitcher({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const t = useT();
   const listId = useId();
   const [pending, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic({ selected, isAll });
@@ -63,9 +65,9 @@ export function AccountSwitcher({
 
   const single = !optimistic.isAll && optimistic.selected.length === 1 ? accounts.find((a) => a.id === optimistic.selected[0]) : undefined;
   const label = accounts.length === 0
-    ? "No accounts"
+    ? t("No accounts")
     : optimistic.isAll
-      ? "All accounts"
+      ? t("All accounts")
       : single
         ? single.nickname
         : `${optimistic.selected.length} accounts`;
@@ -114,7 +116,7 @@ export function AccountSwitcher({
                 }}
               >
                 <Layers />
-                <span className="flex-1">All accounts</span>
+                <span className="flex-1">{t("All accounts")}</span>
                 <Check className={cn("!text-foreground", optimistic.isAll ? "opacity-100" : "opacity-0")} />
               </CommandItem>
             </CommandGroup>

@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 import { NAV } from "./nav-config";
+import { useT } from "@/components/i18n/t";
 
 type NavListProps = { layoutKey: string; onNavigate?: () => void };
 
@@ -27,12 +28,13 @@ function ActiveNavLinks(props: NavListProps) {
 }
 
 function NavLinks({ layoutKey, onNavigate, pathname }: NavListProps & { pathname: string | null }) {
+  const t = useT();
   return (
     <nav className="grid gap-6">
       {NAV.map((group) => (
         <div key={group.label} className="grid gap-0.5">
           <p className="px-3 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            {group.label}
+            {t(group.label)}
           </p>
           {group.items.map((item) => {
             const active = pathname != null && (pathname === item.href || pathname.startsWith(item.href + "/"));
@@ -60,7 +62,7 @@ function NavLinks({ layoutKey, onNavigate, pathname }: NavListProps & { pathname
                     active ? "text-brand-ink" : "text-muted-foreground/80 group-hover:text-foreground",
                   )}
                 />
-                <span className="relative">{item.label}</span>
+                <span className="relative">{t(item.label)}</span>
               </Link>
             );
           })}

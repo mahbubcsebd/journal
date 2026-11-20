@@ -42,7 +42,7 @@ export function CoachStrip({ user }: { user: User }) {
 }
 
 async function Strip({ user }: { user: User }) {
-  const lang = user.settings.coachLanguage === "bn" ? "bn" : "en";
+  const lang = user.settings.locale === "bn" || user.settings.coachLanguage === "bn" ? "bn" : "en";
   const t = TEXT[lang];
   // The coach tables may not exist yet; the dashboard must still load.
   const [report, accounts, prefs] = await Promise.all([

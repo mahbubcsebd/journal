@@ -7,6 +7,7 @@ import { userForKey } from "@/lib/sync/keys";
 import { fromEaDeal, fromEaPosition, parseEaPayload } from "@/lib/sync/map";
 import { ingestDeals } from "@/server/services/ingest";
 import { sendGoalAlerts } from "@/server/services/notifications";
+import { runUserAlerts } from "@/server/services/alerts";
 
 export const maxDuration = 60;
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -115,11 +116,12 @@ export async function POST(request: Request) {
     },
   });
 
-  if (result.newDeals > 0) {
-    after(async () => {
-      const [u] = await db.select().from(user).where(eq(user.id, key.userId)).limit(1);
-      if (u) await sendGoalAlerts(u).catch((e) => console.error("goal alerts after EA sync failed", e));
-    });
-  }
+  after(async () => {
+    const [u] = await db.select().from(user).where(eq(user.id, key.userId)).limit(1);
+    if (!u) return;
+    if (result.newDeals > 0) await sendGoalAlerts(u).catch((e) => console.error("goal alerts after EA sync failed", e));
+    // The EA calls every minute: a good clock for news reminders, cooldowns and limits.
+    await runUserAlerts(u).catch((e) => console.error("[alerts] after EA sync failed", e));
+  });
   return json(200, { ok: true, accountId: account.id, ...result, skipped: parsed.skipped.length });
 }

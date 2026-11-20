@@ -71,9 +71,13 @@ One key works for all your MT5 accounts. Don't share it.
    - **Journal URL** — already filled in; leave it.
    - **Sync key** — double-click **Value**, paste the key, press `Enter`.
    - **History sent on first run (days)** — default 90; use 365 or more for older trades.
+   - **Discipline guard** — `true` (default): warns you inside MT5 when a new trade breaks your rules.
+   - **Guard may close rule-breaking trades** — `false` (default). See *Discipline guard* below.
+   - **Send candles around closed trades** — `true` (default): powers the replay chart on each trade.
 5. **OK**.
 
-The EA never trades, so it works whether **Algo Trading** is on or off.
+The EA never opens trades. With auto-close off it never changes them either, so it works whether
+**Algo Trading** is on or off.
 
 ## 7. Check that it syncs (~1 min)
 
@@ -87,6 +91,39 @@ everything it missed when it starts again. Accounts the EA adds get a name like 
 click **Name it** on the card to rename.
 
 ---
+
+## Discipline guard (EA v1.05+)
+
+The EA downloads your rules from Journal every minute and checks every trade you open:
+
+| Rule | Comes from |
+|---|---|
+| High-impact news window for the symbol's currencies (gold, oil and US indices count as USD) | Settings → Economic news (minutes before/after) |
+| Cooldown after a losing trade | Settings → Trading discipline |
+| A limit goal already reached (daily/weekly max loss, max trades) | Goals |
+| No stop loss one minute after opening | always |
+
+When a trade breaks a rule you get:
+- an MT5 pop-up with a sound,
+- an MT5 phone notification — set it up once: **Tools → Options → Notifications**, tick **Enable Push
+  Notifications** and enter the **MetaQuotes ID** from the MT5 app on your phone (Settings → Messages),
+- a Journal alert on your phone or Telegram (Journal → Settings → Alerts & app).
+
+The chart's corner also says **Guard: OK to trade** or **Guard: DON'T trade … now** for that chart's symbol.
+
+**Auto-close (strict mode)** closes a rule-breaking trade right away. It needs all three:
+1. EA input **Guard may close rule-breaking trades** = `true`,
+2. Journal → Settings → Alerts & app → **Auto-close rule-breaking trades** on,
+3. **Algo Trading** on in MT5's toolbar.
+
+A closed trade can still lose the spread and slippage. Start with alerts only.
+
+## Update from an older EA version
+
+1. Journal → **Accounts → Connect auto-sync → Download EA** and replace `MQL5\Experts\JournalSync.mq5`.
+2. In MetaEditor open it and press **F7** (compile).
+3. On the chart: right-click → **Expert Advisors → Remove**, then attach it again (step 6). Your key
+   stays the same and nothing is sent twice.
 
 ## Sync another account
 

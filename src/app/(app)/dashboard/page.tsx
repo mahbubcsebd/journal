@@ -6,6 +6,8 @@ import { DailyPnlChart } from "@/components/charts/daily-pnl-chart";
 import { EquityChart } from "@/components/charts/equity-chart";
 import { pnlText } from "@/components/calendar/pnl-style";
 import { CoachStrip } from "@/components/coach/coach-strip";
+import { getT } from "@/lib/locale-server";
+import { RuleScoreCard } from "@/components/discipline/rule-score";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { MiniMonth } from "@/components/dashboard/mini-month";
 import { OpenPositions } from "@/components/dashboard/open-positions";
@@ -75,74 +77,77 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
   const avgWin = s.wins ? s.grossProfit / s.wins : null;
   const avgLoss = s.losses ? s.grossLoss / s.losses : null;
   const first = user.name.split(" ")[0] || "trader";
+  const t = await getT();
 
   return (
     <div className="grid gap-6">
       <PageHeader
-        title={`Hi, ${first}`}
-        description={from ? `${formatDay(from, { month: "short", day: "numeric", year: "numeric" })} – today` : "All time"}
+        title={t("Hi, {name}", { name: first })}
+        description={from ? t("{from} – today", { from: formatDay(from, { month: "short", day: "numeric", year: "numeric" }) }) : t("All time")}
         actions={<RangeTabs active={range} basePath="/dashboard" />}
       />
 
       <Stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StaggerItem>
-          <KpiTile label="Net P&L" value={s.net} kind="money" currency={currency} tone="auto" sub={`${s.trades} trades · ${s.tradingDays} days`} />
+          <KpiTile label={t("Net P&L")} value={s.net} kind="money" currency={currency} tone="auto" sub={t("{n} trades · {d} days", { n: s.trades, d: s.tradingDays })} />
         </StaggerItem>
         <StaggerItem>
-          <KpiTile label="Win rate" value={s.winRate} kind="percent" sub={`${s.wins} wins · ${s.losses} losses`} />
+          <KpiTile label={t("Win rate")} value={s.winRate} kind="percent" sub={t("{w} wins · {l} losses", { w: s.wins, l: s.losses })} />
         </StaggerItem>
         <StaggerItem>
           <KpiTile
-            label="Profit factor"
+            label={t("Profit factor")}
             value={s.grossLoss ? s.grossProfit / Math.abs(s.grossLoss) : null}
             kind="ratio"
-            sub="Gross profit ÷ gross loss"
+            sub={t("Gross profit ÷ gross loss")}
           />
         </StaggerItem>
         <StaggerItem>
           <KpiTile
-            label="Expectancy"
+            label={t("Expectancy")}
             value={s.trades ? s.net / s.trades : null}
             kind="money"
             currency={currency}
             tone="auto"
-            sub="Average net per trade"
+            sub={t("Average net per trade")}
           />
         </StaggerItem>
         <StaggerItem>
           <KpiTile
-            label="Avg win / avg loss"
+            label={t("Avg win / avg loss")}
             value={avgWin != null && avgLoss ? avgWin / Math.abs(avgLoss) : null}
             kind="ratio"
             sub={
               avgWin != null || avgLoss != null
                 ? `${avgWin != null ? formatMoney(avgWin, currency) : "—"} / ${avgLoss != null ? formatMoney(avgLoss, currency) : "—"}`
-                : "Payoff ratio"
+                : t("Payoff ratio")
             }
           />
         </StaggerItem>
         <StaggerItem>
-          <KpiTile label="Max drawdown" value={days.length ? dd : null} kind="money" currency={currency} tone="auto" sub="Deepest fall from a peak" />
+          <KpiTile label={t("Max drawdown")} value={days.length ? dd : null} kind="money" currency={currency} tone="auto" sub={t("Deepest fall from a peak")} />
         </StaggerItem>
         <StaggerItem>
           <KpiTile
-            label="Green days"
+            label={t("Green days")}
             value={s.tradingDays ? s.greenDays / s.tradingDays : null}
             kind="percent"
-            sub={`${s.greenDays} green · ${s.redDays} red`}
+            sub={t("{g} green · {r} red", { g: s.greenDays, r: s.redDays })}
           />
         </StaggerItem>
         <StaggerItem>
           <KpiTile
-            label="Current streak"
+            label={t("Current streak")}
             value={days.length ? streak.current : null}
             kind="streak"
-            sub={`Best ${streak.longestGreen} green · worst ${streak.longestRed} red`}
+            sub={t("Best {g} green · worst {r} red", { g: streak.longestGreen, r: streak.longestRed })}
           />
         </StaggerItem>
       </Stagger>
 
       <CoachStrip user={user} />
+
+      <RuleScoreCard user={user} accountIds={ids} />
 
       <OpenPositions accounts={accounts.filter((a) => ids.includes(a.id))} timezone={user.timezone} benchmark={benchmark} />
 

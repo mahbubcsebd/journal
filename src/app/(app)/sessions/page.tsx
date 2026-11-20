@@ -20,6 +20,7 @@ import { getDataMode, getSelectedAccountIds, requireUser } from "@/lib/session";
 import { formatDuration } from "@/lib/trading/metrics";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
 import { getAnalyticsTrades } from "@/server/queries/analytics";
+import { getT } from "@/lib/locale-server";
 import { getEvents, getNewsPrefs } from "@/server/queries/news";
 
 export const metadata: Metadata = { title: "Market sessions" };
@@ -50,6 +51,7 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/sessions">
   const [{ ids }, mode, prefs] = await Promise.all([getSelectedAccountIds(user.id), getDataMode(), getNewsPrefs(user)]);
   const [{ currency, trades }, upcoming] = await Promise.all([getAnalyticsTrades(user.id, ids, from ?? undefined, today, tz), upcomingNews(prefs.currencies)]);
   const s = sessionStats(trades);
+  const t = await getT();
   const money = (v: number, sign = true) => formatMoney(v, currency, { sign });
   const active = s.rows.filter((r) => r.trades > 0);
 
@@ -63,7 +65,7 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/sessions">
         actions={
           <Button asChild variant="outline" size="sm">
             <Link href={`/coach?ask=${encodeURIComponent("Compare my performance across trading sessions (Asia, London, overlap, New York). Which session should I focus on, which should I avoid, and what rules should I set for each?")}`}>
-              <MessagesSquare /> Ask coach
+              <MessagesSquare /> {t("Ask coach")}
             </Link>
           </Button>
         }
@@ -74,7 +76,7 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/sessions">
       <section className="grid gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Your performance by session</h2>
+            <h2 className="text-lg font-semibold tracking-tight">{t("Your performance by session")}</h2>
             <p className="text-sm text-muted-foreground">
               {s.total} closed {mode === "backtest" ? "backtest " : ""}trades · grouped by the UTC hour each trade was opened
             </p>
@@ -118,15 +120,15 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/sessions">
 
             <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
               <Card className="p-4 sm:p-5">
-                <p className="mb-3 font-medium">Where you trade</p>
+                <p className="mb-3 font-medium">{t("Where you trade")}</p>
                 <SharePie
                   center={String(s.total)}
-                  centerSub="trades"
+                  centerSub={t("trades")}
                   data={active.map((r) => ({ label: r.label, value: r.trades, color: SESSION_COLOR[r.key], sub: `${r.trades}` }))}
                 />
               </Card>
               <Card className="p-4 sm:p-5">
-                <p className="mb-3 font-medium">Net P&amp;L by session</p>
+                <p className="mb-3 font-medium">{t("Net P&L by session")}</p>
                 <BreakdownChart
                   currency={currency}
                   rows={active.map((r) => ({
@@ -148,18 +150,18 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/sessions">
 
             <div className="grid gap-4 lg:grid-cols-2">
               <Card className="p-4 sm:p-5">
-                <p className="mb-3 font-medium">Where your losses come from</p>
+                <p className="mb-3 font-medium">{t("Where your losses come from")}</p>
                 <SharePie
                   center={money(s.rows.reduce((a, r) => a + r.grossLoss, 0))}
-                  centerSub="lost"
+                  centerSub={t("lost")}
                   data={active.filter((r) => r.grossLoss < 0).map((r) => ({ label: r.label, value: -r.grossLoss, color: SESSION_COLOR[r.key], sub: money(r.grossLoss) }))}
                 />
               </Card>
               <Card className="p-4 sm:p-5">
-                <p className="mb-3 font-medium">Where your profits come from</p>
+                <p className="mb-3 font-medium">{t("Where your profits come from")}</p>
                 <SharePie
                   center={money(s.rows.reduce((a, r) => a + r.grossProfit, 0))}
-                  centerSub="won"
+                  centerSub={t("won")}
                   data={active.filter((r) => r.grossProfit > 0).map((r) => ({ label: r.label, value: r.grossProfit, color: SESSION_COLOR[r.key], sub: money(r.grossProfit) }))}
                 />
               </Card>
@@ -187,7 +189,7 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/sessions">
             </Card>
 
             <Card className="p-4 sm:p-5">
-              <p className="font-medium">Session × weekday</p>
+              <p className="font-medium">{t("Session × weekday")}</p>
               <p className="mb-3 text-xs text-muted-foreground">Net P&amp;L. Find the exact day and session that costs you.</p>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[520px] text-sm">
@@ -243,7 +245,7 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/sessions">
       <section className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         <Card className="p-4 sm:p-5">
           <div className="mb-3 flex items-baseline justify-between gap-2">
-            <p className="font-medium">High-impact news by session</p>
+            <p className="font-medium">{t("High-impact news by session")}</p>
             <Link href="/news" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
               Calendar <ArrowRight className="size-3.5" />
             </Link>
@@ -270,7 +272,7 @@ async function Sessions({ searchParams }: { searchParams: PageProps<"/sessions">
         </Card>
 
         <Card className="p-4 sm:p-5">
-          <p className="mb-3 font-medium">How each session trades</p>
+          <p className="mb-3 font-medium">{t("How each session trades")}</p>
           <ul className="grid gap-3">
             {TIPS.map((t) => (
               <li key={t.key} className="grid gap-0.5">

@@ -6,6 +6,7 @@ import { aiConfigured, chatWithTools } from "@/lib/ai/gemini";
 import { addDays, formatDay, startOfWeek, todayIn, weekday, type WeekStart } from "@/lib/dates";
 import { coachSystem } from "@/server/coach/prompt";
 import { COACH_TOOLS, coachContext, listMemories, runCoachTool } from "@/server/coach/tools";
+import { sendAlert } from "@/server/services/alerts";
 
 export type ReportKind = "daily" | "weekly";
 
@@ -94,7 +95,26 @@ export async function generateCoachReport(u: User, kind: ReportKind, opts: { tod
     .values(values)
     .onConflictDoUpdate({ target: [coachReport.userId, coachReport.kind, coachReport.period], set: { ...values, createdAt: new Date() } })
     .returning();
+  await sendAlert(u, {
+    kind: "REVIEW",
+    key: `${kind}-${from}`,
+    title: lang === "bn" ? `📊 ${title} তৈরি` : `📊 ${title} is ready`,
+    body: excerpt(answer.text),
+    url: `/coach?c=${conv.id}`,
+  }).catch((e) => console.warn("[coach] review alert failed", e));
   return row;
+}
+
+/** First plain sentences of a markdown answer, for a notification. */
+function excerpt(md: string, max = 180) {
+  const t = md
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/^#+\s.*$/gm, " ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*_`>|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return t.length > max ? t.slice(0, max).trimEnd() + "…" : t;
 }
 
 /** Cron: yesterday's review for everyone, last week's on the first day of their week. */

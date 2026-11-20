@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Noto_Sans_Bengali } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { PwaRegister } from "@/components/pwa/pwa";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} ${bengali.variable}`}>
       <body className="min-h-dvh">
         <Providers>{children}</Providers>
+        <PwaRegister />
       </body>
     </html>
   );

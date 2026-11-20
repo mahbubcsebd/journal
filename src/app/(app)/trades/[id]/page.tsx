@@ -13,11 +13,12 @@ import { getSelectedAccountIds, requireUser } from "@/lib/session";
 import { cn, formatDateTime, formatMoney, formatPrice } from "@/lib/utils";
 import { getFilterOptions, getNeighbours, getTrade } from "@/server/queries/trades";
 import { PriceLadder } from "./price-ladder";
+import { TradeReplay } from "@/components/charts/trade-replay";
 import { TradeImages } from "./trade-images";
 import { TradeAi } from "./trade-ai";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { aiInsight } from "@/db/schema";
+import { aiInsight, tradeCandles } from "@/db/schema";
 import { aiConfigured } from "@/lib/ai/gemini";
 import type { TradeFeedback } from "@/lib/ai/schemas";
 import { TradeJournal } from "./trade-journal";
@@ -54,6 +55,14 @@ async function TradeView({ params }: { params: PageProps<"/trades/[id]">["params
     getNeighbours(user.id, ids, t.closeTime ?? t.openTime, t.id),
     db.select({ content: aiInsight.content }).from(aiInsight).where(and(eq(aiInsight.userId, user.id), eq(aiInsight.tradeId, t.id))).orderBy(desc(aiInsight.createdAt)).limit(1),
   ]);
+  // Candles sent by the EA (table may not exist before migration 0010).
+  const [replay] = await db
+    .select({ timeframe: tradeCandles.timeframe, candles: tradeCandles.candles })
+    .from(tradeCandles)
+    .where(eq(tradeCandles.tradeId, t.id))
+    .limit(1)
+    .catch(() => []);
+  const digits = Math.min(5, Math.max(...[t.openPrice, t.closePrice, t.sl, t.tp].filter((v): v is number => v != null).map((v) => (String(v).split(".")[1] ?? "").length), 2));
   const cur = t.account.currency;
   const tz = user.timezone;
   const pnlTone = t.status === "OPEN" ? "" : t.netPnl > 0 ? "text-profit" : t.netPnl < 0 ? "text-loss" : "";
@@ -146,7 +155,36 @@ async function TradeView({ params }: { params: PageProps<"/trades/[id]">["params
             </Card>
           </FadeIn>
           <FadeIn delay={0.1}>
-            <PriceLadder side={t.side} entry={t.openPrice} exit={t.closePrice} sl={t.sl} tp={t.tp} />
+            {replay ? (
+              <Card className="p-3 sm:p-4">
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 px-1">
+                  <p className="text-sm font-semibold">Replay</p>
+                  <p className="text-xs text-muted-foreground">
+                    {replay.timeframe >= 60 ? `H${replay.timeframe / 60}` : `M${replay.timeframe}`} candles · your time
+                  </p>
+                </div>
+                <TradeReplay
+                  candles={replay.candles}
+                  timeframe={replay.timeframe}
+                  timezone={tz}
+                  side={t.side}
+                  entry={t.openPrice}
+                  exit={t.closePrice}
+                  sl={t.sl}
+                  tp={t.tp}
+                  openAt={t.openTime.getTime()}
+                  closeAt={t.closeTime?.getTime() ?? null}
+                  digits={digits}
+                />
+              </Card>
+            ) : (
+              <div className="grid gap-1.5">
+                <PriceLadder side={t.side} entry={t.openPrice} exit={t.closePrice} sl={t.sl} tp={t.tp} />
+                {t.account.syncMethod === "EA" && (
+                  <p className="px-1 text-xs text-muted-foreground">The candle replay arrives from the MT5 EA (v1.05+) a few minutes after a trade closes.</p>
+                )}
+              </div>
+            )}
           </FadeIn>
           <FadeIn delay={0.15}>
             <TradeImages tradeId={t.id} initial={t.images} />

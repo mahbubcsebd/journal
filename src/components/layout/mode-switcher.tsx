@@ -7,6 +7,7 @@ import { ResponsivePopover } from "@/components/ui/responsive-popover";
 import type { DataMode } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { setDataMode } from "@/server/actions/account-filter";
+import { useT } from "@/components/i18n/t";
 
 const MODES: { value: DataMode; label: string; hint: string; icon: typeof Radio }[] = [
   { value: "live", label: "Live", hint: "Real trades only", icon: Radio },
@@ -17,6 +18,7 @@ const MODES: { value: DataMode; label: string; hint: string; icon: typeof Radio 
 /** Live / Backtest / All — which trades every stats page uses. */
 export function ModeSwitcher({ mode }: { mode: DataMode }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const [pending, start] = useTransition();
   const [current, setCurrent] = useOptimistic(mode);
   const listId = useId();
@@ -44,7 +46,7 @@ export function ModeSwitcher({ mode }: { mode: DataMode }) {
           )}
         >
           <active.icon className="size-4" />
-          <span className="hidden sm:inline">{active.label}</span>
+          <span className="hidden sm:inline">{t(active.label)}</span>
           <ChevronsUpDown className="hidden size-3.5 text-muted-foreground sm:block" />
         </button>
       }
@@ -66,8 +68,8 @@ export function ModeSwitcher({ mode }: { mode: DataMode }) {
               >
                 <m.icon />
                 <span className="grid flex-1">
-                  <span>{m.label}</span>
-                  <span className="text-[11px] text-muted-foreground">{m.hint}</span>
+                  <span>{t(m.label)}</span>
+                  <span className="text-[11px] text-muted-foreground">{t(m.hint)}</span>
                 </span>
                 <Check className={cn("!text-foreground", m.value === current ? "opacity-100" : "opacity-0")} />
               </CommandItem>

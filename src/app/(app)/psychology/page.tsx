@@ -17,6 +17,7 @@ import { getSelectedAccountIds, requireUser } from "@/lib/session";
 import { cn, formatMoney, formatPercent } from "@/lib/utils";
 import { getAnalyticsTrades, getSetupReps } from "@/server/queries/analytics";
 import { MindsetCoach } from "@/components/mindset/mindset-coach";
+import { RuleScoreSection } from "@/components/discipline/rule-score";
 import { getEvents, getNewsPrefs } from "@/server/queries/news";
 import { DEFAULT_COOLDOWN_MINUTES } from "@/lib/mindset";
 import { getJournalDays } from "@/server/queries/journal";
@@ -151,6 +152,7 @@ async function Psychology({ searchParams }: { searchParams: PageProps<"/psycholo
         weekStartsOn={(user.settings.weekStartsOn ?? 1) as WeekStart}
         news={{ events: newsEvents, window: prefs.window }}
       />
+      <RuleScoreSection user={user} accountIds={ids} />
       <h2 className="-mb-2 text-lg font-semibold tracking-tight">This period</h2>
       {trades.length === 0 ? (
         <Card className="px-6 py-16 text-center text-sm text-muted-foreground">No closed trades in this period.</Card>
