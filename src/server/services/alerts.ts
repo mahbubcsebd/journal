@@ -9,6 +9,7 @@ import { CURRENCY_FLAG, goldBias } from "@/lib/news";
 import { formatMoney } from "@/lib/utils";
 import { getGoalsWithProgress } from "@/server/queries/goals";
 import { getUpcomingRelevant } from "@/server/queries/news";
+import { blockedStatus } from "@/lib/admin";
 
 export type AlertKind = "NEWS" | "COOLDOWN" | "LIMIT" | "REVIEW" | "GUARD" | "TEST";
 export type Alert = { kind: AlertKind; key: string; title: string; body: string; url?: string };
@@ -183,6 +184,6 @@ export async function runAllAlerts() {
     .from(userTable)
     .where(and(eq(userTable.onboarded, true), or(inArray(userTable.id, withPush), sql`${userTable.settings}->>'telegramChatId' is not null`)));
   let sent = 0;
-  for (const u of users) sent += await runUserAlerts(u, { force: true }).catch((e) => (console.error("[alerts] user failed", u.id, e), 0));
+  for (const u of users.filter((x) => !blockedStatus(x))) sent += await runUserAlerts(u, { force: true }).catch((e) => (console.error("[alerts] user failed", u.id, e), 0));
   return { users: users.length, sent };
 }

@@ -47,6 +47,14 @@ export const user = pgTable("user", {
   baseCurrency: text("base_currency").notNull().default("USD"),
   onboarded: boolean("onboarded").notNull().default(false),
   settings: jsonb("settings").$type<UserSettings>().notNull().default({}),
+  /** Set by a super admin: paused (temporary, optional end) or banned. Both block sign-in and sync. */
+  status: text("status").$type<"active" | "paused" | "banned">().notNull().default("active"),
+  statusReason: text("status_reason"),
+  /** Paused accounts reopen at this time (null = until an admin unpauses). */
+  statusUntil: timestamp("status_until", { withTimezone: true }),
+  statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
+  /** Last time the user opened the app (updated at most every 10 minutes). */
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   ...timestamps,
 });
 
@@ -765,3 +773,18 @@ export const tradeCandles = pgTable("trade_candles", {
   candles: jsonb("candles").$type<[number, number, number, number, number][]>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Every super-admin action, for accountability. */
+export const adminAudit = pgTable(
+  "admin_audit",
+  {
+    id: id(),
+    adminEmail: text("admin_email").notNull(),
+    action: text("action").notNull(),
+    targetUserId: text("target_user_id").references(() => user.id, { onDelete: "set null" }),
+    targetEmail: text("target_email"),
+    details: jsonb("details").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("admin_audit_created_idx").on(t.createdAt), index("admin_audit_target_idx").on(t.targetUserId)],
+);

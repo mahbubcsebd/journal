@@ -15,7 +15,7 @@ const body = z.object({
 /** The EA's guard saw a rule break: forward it to the trader's phone / Telegram. */
 export async function POST(request: Request) {
   const key = await userForKey(request.headers.get("authorization"));
-  if (!key) return Response.json({ error: "Invalid or revoked sync key" }, { status: 401 });
+  if (!key) return Response.json({ error: "Invalid or revoked sync key, or the Journal account is paused" }, { status: 401 });
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad event" }, { status: 400 });
   const [u] = await db.select().from(user).where(eq(user.id, key.userId)).limit(1);

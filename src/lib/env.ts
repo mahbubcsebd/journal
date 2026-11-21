@@ -9,6 +9,7 @@ const OPTIONAL = {
   METAAPI_TOKEN: "MetaApi cloud sync is disabled (the MT5 EA still works)",
   VAPID_PRIVATE_KEY: "phone/browser push alerts are disabled (npx web-push generate-vapid-keys)",
   TELEGRAM_BOT_TOKEN: "Telegram alerts are disabled",
+  SUPER_ADMIN_EMAILS: "no super admin: the /admin page is hidden for everyone",
 } as const;
 
 export function checkEnv() {

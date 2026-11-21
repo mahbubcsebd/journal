@@ -13,7 +13,7 @@ import { guardRules } from "@/server/services/guard";
 export async function GET(request: Request) {
   await connection();
   const key = await userForKey(request.headers.get("authorization"));
-  if (!key) return new Response("error=Invalid or revoked sync key\n", { status: 401 });
+  if (!key) return new Response("error=Invalid or revoked sync key, or the Journal account is paused\n", { status: 401 });
   const login = new URL(request.url).searchParams.get("login") ?? "";
   const [u] = await db.select().from(user).where(eq(user.id, key.userId)).limit(1);
   if (!u) return new Response("error=No user\n", { status: 401 });

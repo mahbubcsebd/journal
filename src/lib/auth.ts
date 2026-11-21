@@ -3,8 +3,22 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { eq } from "drizzle-orm";
+import { blockedMessage } from "./admin";
 import { db, schema } from "@/db";
 import { sendOtpEmail } from "./mailer";
+
+/** Paused or banned accounts can't get a code, sign in, or start a session. */
+async function blockedByEmail(email: unknown) {
+  if (typeof email !== "string" || !email) return null;
+  const [u] = await db
+    .select({ status: schema.user.status, statusUntil: schema.user.statusUntil, statusReason: schema.user.statusReason })
+    .from(schema.user)
+    .where(eq(schema.user.email, email.trim().toLowerCase()))
+    .limit(1);
+  return u ? blockedMessage(u) : null;
+}
 
 export const auth = betterAuth({
   appName: process.env.NEXT_PUBLIC_APP_NAME ?? "Journal",
@@ -30,6 +44,28 @@ export const auth = betterAuth({
       timezone: { type: "string", required: false, defaultValue: "Asia/Dhaka", input: false },
       baseCurrency: { type: "string", required: false, defaultValue: "USD", input: false },
       onboarded: { type: "boolean", required: false, defaultValue: false, input: false },
+    },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/email-otp/send-verification-otp" && ctx.path !== "/sign-in/email-otp") return;
+      const msg = await blockedByEmail((ctx.body as { email?: unknown } | undefined)?.email);
+      if (msg) throw new APIError("FORBIDDEN", { message: msg });
+    }),
+  },
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const [u] = await db
+            .select({ status: schema.user.status, statusUntil: schema.user.statusUntil, statusReason: schema.user.statusReason })
+            .from(schema.user)
+            .where(eq(schema.user.id, session.userId))
+            .limit(1);
+          const msg = u ? blockedMessage(u) : null;
+          if (msg) throw new APIError("FORBIDDEN", { message: msg });
+        },
+      },
     },
   },
   rateLimit: {

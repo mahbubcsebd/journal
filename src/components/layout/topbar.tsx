@@ -14,6 +14,10 @@ import { CommandMenu } from "./command-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 import { LocaleSync } from "@/components/i18n/t";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { user as userTable } from "@/db/schema";
+import { isSuperAdmin } from "@/lib/admin";
 
 export function Topbar() {
   return (
@@ -65,12 +69,19 @@ async function AccountSwitcherSlot() {
   );
 }
 
+/** "Last seen" for the admin list, written at most every 10 minutes. */
+async function touchLastSeen(id: string, last: Date | null) {
+  if (last && Date.now() - last.getTime() < 10 * 60_000) return;
+  await db.update(userTable).set({ lastSeenAt: new Date() }).where(eq(userTable.id, id)).catch(() => undefined);
+}
+
 async function UserSlot() {
   const user = await getCurrentUser();
   if (!user) return null;
+  after(() => touchLastSeen(user.id, user.lastSeenAt));
   return (
     <>
-      <UserMenu name={user.name} email={user.email} />
+      <UserMenu name={user.name} email={user.email} isAdmin={isSuperAdmin(user.email)} />
       <LocaleSync locale={user.settings.locale === "bn" ? "bn" : "en"} />
     </>
   );

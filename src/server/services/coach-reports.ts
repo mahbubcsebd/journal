@@ -7,6 +7,7 @@ import { addDays, formatDay, startOfWeek, todayIn, weekday, type WeekStart } fro
 import { coachSystem } from "@/server/coach/prompt";
 import { COACH_TOOLS, coachContext, listMemories, runCoachTool } from "@/server/coach/tools";
 import { sendAlert } from "@/server/services/alerts";
+import { blockedStatus } from "@/lib/admin";
 
 export type ReportKind = "daily" | "weekly";
 
@@ -122,7 +123,7 @@ export async function runCoachReports(budgetMs = 200_000) {
   const out = { daily: 0, weekly: 0, skipped: 0, errors: 0 };
   if (!aiConfigured()) return out;
   const started = Date.now();
-  const users = await db.select().from(userTable).where(eq(userTable.onboarded, true));
+  const users = (await db.select().from(userTable).where(eq(userTable.onboarded, true))).filter((u) => !blockedStatus(u));
   for (const u of users) {
     for (const kind of ["weekly", "daily"] as const) {
       if (Date.now() - started > budgetMs) return { ...out, stoppedEarly: true };

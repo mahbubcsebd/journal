@@ -50,6 +50,7 @@ export const config = {
     "/challenges/:path*",
     "/insights/:path*",
     "/accounts/:path*",
+    "/admin/:path*",
     "/import/:path*",
     "/tags/:path*",
     "/settings/:path*",

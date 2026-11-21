@@ -82,6 +82,7 @@ bar bar chalano jay (already thakle skip kore).
 | `VAPID_SUBJECT` | `mailto:tomar@gmail.com` |
 | `TELEGRAM_BOT_TOKEN` | *(optional, Telegram alert)* Telegram e **@BotFather** → `/newbot` → token |
 | `TELEGRAM_BOT_USERNAME` | bot er username (jemon `MyJournalBot`, `@` chara) |
+| `SUPER_ADMIN_EMAILS` | super admin der email, comma diye (jemon `tomar@gmail.com`). Shudhu era `/admin` dekhte pay |
 | `TELEGRAM_WEBHOOK_SECRET` | `openssl rand -hex 24` er output (shudhu letter/number) |
 
    `openssl` na thakle: <https://generate-secret.vercel.app/32> theke random value nite paro.

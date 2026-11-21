@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Moon, Settings, Sun, Wallet } from "lucide-react";
+import { LogOut, Moon, Settings, Sun, Wallet, ShieldCheck } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import {
@@ -15,7 +15,7 @@ import { signOut } from "@/lib/auth-client";
 import { initials } from "@/lib/utils";
 import { useT } from "@/components/i18n/t";
 
-export function UserMenu({ name, email }: { name: string; email: string }) {
+export function UserMenu({ name, email, isAdmin = false }: { name: string; email: string; isAdmin?: boolean }) {
   const { resolvedTheme, setTheme } = useTheme();
   const t = useT();
   return (
@@ -38,6 +38,11 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
         <DropdownMenuItem asChild>
           <Link href="/settings"><Settings /> {t("Settings")}</Link>
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link href="/admin"><ShieldCheck /> Admin</Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           className="sm:hidden"
           onSelect={(e) => {

@@ -21,7 +21,7 @@ const json = (status: number, body: unknown) => Response.json(body, { status });
  */
 export async function POST(request: Request) {
   const key = await userForKey(request.headers.get("authorization"));
-  if (!key) return json(401, { error: "Invalid or revoked sync key" });
+  if (!key) return json(401, { error: "Invalid or revoked sync key, or the Journal account is paused" });
   if (key.lastUsedAt && Date.now() - key.lastUsedAt.getTime() < 1500) return json(429, { error: "Too many requests" });
 
   const length = Number(request.headers.get("content-length") ?? 0);

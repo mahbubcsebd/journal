@@ -14,6 +14,7 @@ import { getDailyPnl } from "@/server/queries/calendar";
 import { getGoalsWithProgress } from "@/server/queries/goals";
 import { formatGoalValue } from "@/components/goals/format";
 import { metaApiConfigured, staleMetaApiAccounts, syncMetaApiAccount } from "./metaapi";
+import { blockedStatus } from "@/lib/admin";
 
 /** Insert the log row first; only the caller that wins the insert sends the email. */
 async function claim(userId: string, kind: string, key: string) {
@@ -131,7 +132,7 @@ export async function sendGoalAlerts(user: User) {
 }
 
 export async function runDailyNotifications() {
-  const users = await db.select().from(userTable).where(eq(userTable.onboarded, true));
+  const users = (await db.select().from(userTable).where(eq(userTable.onboarded, true))).filter((u) => !blockedStatus(u));
   const results = { users: users.length, weekly: 0, alerts: 0, errors: 0, synced: 0 };
   // Catch up MetaApi accounts first so reports and alerts use fresh data.
   if (metaApiConfigured()) {

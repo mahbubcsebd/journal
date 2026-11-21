@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { tradingAccount, user } from "@/db/schema";
 import { auth } from "./auth";
 import { SIGNED_OUT_URL } from "@/lib/auth-routes";
+import { blockedStatus } from "@/lib/admin";
 
 export const ACCOUNT_FILTER_COOKIE = "jr_accounts";
 export const DATA_MODE_COOKIE = "jr_mode";
@@ -37,7 +38,9 @@ export const getCurrentUser = cache(async () => {
   const session = await getSession();
   if (!session) return null;
   const [row] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
-  return row ?? null;
+  // Paused or banned since signing in: treat as signed out (sessions are also revoked).
+  if (!row || blockedStatus(row)) return null;
+  return row;
 });
 
 /** For app pages: must be signed in and onboarded. */
