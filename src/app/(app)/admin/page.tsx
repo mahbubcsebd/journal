@@ -105,7 +105,35 @@ async function Admin({ searchParams }: { searchParams: PageProps<"/admin">["sear
           <Button type="submit">Apply</Button>
         </form>
 
-        <div className="overflow-x-auto">
+        {/* Phones: each user as a card. */}
+        <ul className="divide-y sm:hidden">
+          {users.rows.length === 0 && <li className="px-4 py-10 text-center text-muted-foreground">No users match.</li>}
+          {users.rows.map((u) => (
+            <li key={u.id} className="flex items-start gap-2 px-4 py-3">
+              <Link href={`/admin/users/${u.id}`} className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-1.5 font-medium">
+                  {u.name || u.email.split("@")[0]}
+                  {isSuperAdmin(u.email) && (
+                    <Badge variant="brand" className="gap-1 text-[10px]">
+                      <ShieldCheck className="size-3" /> Admin
+                    </Badge>
+                  )}
+                  <StatusBadge status={u.status} statusUntil={u.statusUntil} />
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">{u.email}</span>
+                <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground tabular">
+                  <span>{u.accounts} acct</span>
+                  <span>{u.trades.toLocaleString("en-US")} trades</span>
+                  <span>seen {ago(u.lastSeenAt)}</span>
+                  <span>sync {ago(u.lastSync ? new Date(u.lastSync) : null)}</span>
+                </span>
+              </Link>
+              <UserActions userId={u.id} email={u.email} blocked={blockedStatus(u)} isSelf={u.id === me.id || isSuperAdmin(u.email)} compact />
+            </li>
+          ))}
+        </ul>
+
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>

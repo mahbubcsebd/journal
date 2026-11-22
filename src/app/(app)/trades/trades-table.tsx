@@ -79,7 +79,62 @@ export function TradesTable({ rows, filters, timezone, total, pageSize, hasAccou
 
   return (
     <Card className="overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* Phones: each trade as a tappable card (an app list, not a shrunk table). */}
+      <ul className="divide-y sm:hidden">
+        {rows.map((t) => (
+          <li key={t.id}>
+            <Link href={`/trades/${t.id}`} className="block px-4 py-3 transition-colors active:bg-muted/60">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-semibold">{t.symbol}</span>
+                    <Badge variant={t.side === "LONG" ? "profit" : "loss"}>{t.side === "LONG" ? "Long" : "Short"}</Badge>
+                    {t.status === "OPEN" && <Badge variant="warning">Open</Badge>}
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground tabular">{formatDateTime(t.closeTime ?? t.openTime, timezone)}</p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 font-mono text-base font-semibold whitespace-nowrap tabular",
+                    t.status === "OPEN" ? "text-muted-foreground" : t.netPnl > 0 ? "text-profit" : t.netPnl < 0 ? "text-loss" : "",
+                  )}
+                >
+                  {formatMoney(t.netPnl, t.currency, { sign: true })}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[12px] text-muted-foreground tabular">
+                <span>{t.volume.toFixed(2)} lots</span>
+                <span className={cn(t.pips != null && (t.pips > 0 ? "text-profit" : t.pips < 0 ? "text-loss" : ""))}>
+                  {t.pips == null ? "— pips" : `${t.pips > 0 ? "+" : ""}${t.pips.toFixed(1)} pips`}
+                </span>
+                <span>{t.rMultiple == null ? "—R" : `${t.rMultiple.toFixed(2)}R`}</span>
+                <span>{formatDuration(t.durationSec)}</span>
+                <span className="inline-flex items-center gap-1 truncate">
+                  <span className="size-1.5 shrink-0 rounded-full" style={{ background: t.accountColor }} />
+                  {t.accountName}
+                </span>
+              </div>
+              {(t.setupName || t.tags.length > 0) && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {t.setupName && <Badge variant="brand">{t.setupName}</Badge>}
+                  {t.tags.slice(0, 4).map((g) => (
+                    <span
+                      key={g.id}
+                      className="rounded-md px-1.5 py-0.5 text-[11px] font-medium"
+                      style={{ background: `color-mix(in oklch, ${g.color} 16%, transparent)`, color: `color-mix(in oklch, ${g.color} 55%, var(--foreground))` }}
+                    >
+                      {g.name}
+                    </span>
+                  ))}
+                  {t.tags.length > 4 && <span className="text-[11px] text-muted-foreground">+{t.tags.length - 4}</span>}
+                </div>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[960px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
