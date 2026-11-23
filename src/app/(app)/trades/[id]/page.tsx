@@ -43,7 +43,7 @@ export default function TradePage({ params }: PageProps<"/trades/[id]">) {
   );
 }
 
-const SOURCE_LABEL = { METAAPI: "MetaApi sync", EA: "EA sync", IMPORT: "Imported", MANUAL: "Manual" } as const;
+const SOURCE_LABEL = { METAAPI: "MetaApi sync", EA: "EA sync", IMPORT: "Imported", MANUAL: "Manual", SMC: "SMC Desk paper" } as const;
 
 async function TradeView({ params }: { params: PageProps<"/trades/[id]">["params"] }) {
   const [user, { id }] = await Promise.all([requireUser(), params]);

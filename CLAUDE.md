@@ -19,6 +19,7 @@ Next.js 16.4 (App Router), React 19.3, TypeScript, Tailwind v4, Motion, Radix/cv
 - src/db — Drizzle schema + client
 - src/lib — pure logic (analytics, dates, risk, goals) with co-located *.test.ts
 - mql5 — MT5 Expert Advisor; drizzle — migrations; PLAN.md, DEPLOY.md
+- SMC Desk: /desk page → components/desk + lib/desk (ported from smc-desk/web). Data via /api/desk/[...path] proxy (session + SMC_ACCESS_KEY) and /api/desk/ws signed WS token. Paper trades → "SMC Paper" account via server/actions/desk-trades.ts. smc-desk/ = separate repo (server + bridge), gitignored. Plan: docs/SMC-MERGE.md
 
 ## Conventions
 - Server Components default; `proxy.ts` not middleware. Read node_modules/next/dist/docs before using unsure Next APIs.

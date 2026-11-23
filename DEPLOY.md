@@ -84,6 +84,9 @@ bar bar chalano jay (already thakle skip kore).
 | `TELEGRAM_BOT_USERNAME` | bot er username (jemon `MyJournalBot`, `@` chara) |
 | `SUPER_ADMIN_EMAILS` | super admin der email, comma diye (jemon `tomar@gmail.com`). Shudhu era `/admin` dekhte pay |
 | `TELEGRAM_WEBHOOK_SECRET` | `openssl rand -hex 24` er output (shudhu letter/number) |
+| `SMC_API_URL` | *(optional)* SMC Desk server tunnel URL, e.g. `https://desk.example.com` |
+| `SMC_ACCESS_KEY` | *(optional)* same value as `ACCESS_KEY` in smc-desk/server/.env |
+| `SMC_WS_SECRET` | *(optional)* same value as `WS_TOKEN_SECRET` in smc-desk/server/.env (`openssl rand -base64 32`) |
 
    `openssl` na thakle: <https://generate-secret.vercel.app/32> theke random value nite paro.
 3. **Deploy**. Prothom deploy er por project URL ta jodi alada hoy, `BETTER_AUTH_URL` ar

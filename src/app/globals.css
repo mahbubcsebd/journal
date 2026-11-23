@@ -86,6 +86,16 @@
 }
 
 @theme inline {
+  /* SMC Desk aliases (components/desk): mapped onto Journal tokens. */
+  --color-water: var(--background);
+  --color-hull: var(--card);
+  --color-deck: var(--muted);
+  --color-line: var(--border);
+  --color-ink: var(--foreground);
+  --color-mute: var(--muted-foreground);
+  --color-gold: var(--warning);
+  --color-jade: var(--profit);
+  --color-coral: var(--loss);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -344,4 +354,22 @@
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* SMC Desk: thin scrollbar for the brief column, live-status pulse. */
+.brief-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pulse-dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-dot {
+  50% {
+    opacity: 0.35;
+  }
 }

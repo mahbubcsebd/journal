@@ -35,3 +35,8 @@ src/components/ui (shadcn/ui pattern, Radix + cmdk): button, card, badge, input,
 - No hardcoded hex/hsl colors in components; use tokens.
 - No color-only meaning for profit/loss (add sign/icon).
 - No generic uniform card grids; vary hierarchy and scale.
+
+## SMC Desk (/desk)
+- components/desk keep SMC class names (water/hull/deck/line/ink/mute/gold/jade/coral); globals.css `@theme inline` maps them onto Journal tokens (gold→warning, jade→profit, coral→loss).
+- Desk shell is always dark (`dark` class on its root): chart canvas colours (lib/desk/format.ts COLORS) are tuned for dark.
+- Fits inside app shell: rounded-xl bordered panel, height calc(100dvh-8rem) on lg.

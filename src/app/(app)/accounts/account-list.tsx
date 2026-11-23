@@ -44,6 +44,7 @@ const METHOD: Record<TradingAccount["syncMethod"], string> = {
   METAAPI: "MetaApi",
   IMPORT: "Imported",
   MANUAL: "Manual",
+  SMC: "SMC Desk",
 };
 
 function ago(iso: Date | string | null) {

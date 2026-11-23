@@ -178,7 +178,7 @@ export const rateLimit = pgTable("rate_limit", {
 /* -------------------------------------------------------------------------- */
 
 export const platformEnum = pgEnum("platform", ["MT5", "MT4"]);
-export const syncMethodEnum = pgEnum("sync_method", ["METAAPI", "EA", "IMPORT", "MANUAL"]);
+export const syncMethodEnum = pgEnum("sync_method", ["METAAPI", "EA", "IMPORT", "MANUAL", "SMC"]);
 export const accountEnvEnum = pgEnum("account_env", ["REAL", "DEMO"]);
 export const accountStatusEnum = pgEnum("account_status", [
   "PENDING",

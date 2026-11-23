@@ -10,7 +10,17 @@ const OPTIONAL = {
   VAPID_PRIVATE_KEY: "phone/browser push alerts are disabled (npx web-push generate-vapid-keys)",
   TELEGRAM_BOT_TOKEN: "Telegram alerts are disabled",
   SUPER_ADMIN_EMAILS: "no super admin: the /admin page is hidden for everyone",
+  SMC_API_URL: "SMC Desk (live charts/scanner) is disabled",
+  SMC_ACCESS_KEY: "SMC Desk requests go without an access key",
+  SMC_WS_SECRET: "SMC Desk live feed (WebSocket) is disabled",
 } as const;
+
+/** SMC Desk server settings (server-only). Null when the desk is not configured. */
+export function smcConfig() {
+  const apiUrl = process.env.SMC_API_URL?.trim().replace(/\/$/, "");
+  if (!apiUrl) return null;
+  return { apiUrl, accessKey: process.env.SMC_ACCESS_KEY?.trim() ?? "", wsSecret: process.env.SMC_WS_SECRET?.trim() ?? "" };
+}
 
 export function checkEnv() {
   const prod = process.env.NODE_ENV === "production";

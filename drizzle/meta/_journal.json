@@ -85,6 +85,13 @@
       "when": 1795247445304,
       "tag": "0011_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795428040657,
+      "tag": "0012_smc_sync_method",
+      "breakpoints": true
     }
   ]
 }

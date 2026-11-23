@@ -1,0 +1,1 @@
+ALTER TYPE "public"."sync_method" ADD VALUE IF NOT EXISTS 'SMC';

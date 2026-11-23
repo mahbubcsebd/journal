@@ -3,6 +3,7 @@ import {
   BookOpen,
   Brain,
   CalendarDays,
+  CandlestickChart,
   ChartNoAxesCombined,
   FileText,
   FolderInput,
@@ -31,6 +32,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/coach", label: "AI Coach", icon: MessagesSquare },
+      { href: "/desk", label: "SMC Desk", icon: CandlestickChart },
       { href: "/calendar", label: "Calendar", icon: CalendarDays },
       { href: "/news", label: "News", icon: Newspaper },
       { href: "/sessions", label: "Sessions", icon: Globe2 },

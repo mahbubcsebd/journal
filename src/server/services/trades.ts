@@ -6,7 +6,7 @@ import type { RawDeal } from "@/lib/trading/build-trades";
 import { deriveTrade, type TradeInput } from "@/lib/trading/metrics";
 import type { ParsedTransaction } from "@/lib/import/parse-report";
 
-type Source = "METAAPI" | "EA" | "IMPORT" | "MANUAL";
+type Source = "METAAPI" | "EA" | "IMPORT" | "MANUAL" | "SMC";
 
 export function tradeRow(userId: string, accountId: string, source: Source, t: TradeInput) {
   const d = deriveTrade(t);
